@@ -22,45 +22,48 @@ We plan to meet regularly on Tuesday nights at 2000 hours, and Saturdays at 1900
 
 \section{Proposal}
 \subsection{Vision}
-An extensible intelligent text-based assistant for creating and executing workflows.
+A peer-to-peer encrypted messaging system designed for communication between people on the same network.
 
 \subsection{Key Features}
 \begin{itemize}
-	\item A domain specific language for processing user input and specifying the function to be performed
-	\item A context-based system for grouping related tasks
-	\item Ability to extend the current context interactively (defining new commands)
-	\item Support for invoking arbitrary programs on the host machine within tasks
-	\item Support for remote task execution on a server
+	\item UDP based discovery of other connected users on the same network 
+	\item Encrypted messaging over TCP using the RSA algorithm
+	\item Group messaging
+	\item Ability to load missed messages from peers in the same group
+	\item Ability to set a username
+	\item Can export chat log to .txt file
 \end{itemize}
 
 \subsection{Description}
-Our program is an extensible text based artificial intelligence system like Siri or Google Assistant. Interaction occurs within a \textit{context} which contains a list of \textit{rules}. Each rule contains two functions in our domain specific language: a function which takes a string and returns a boolean indicating whether to accept the string, and a function which takes a string and returns the processed output. The latter can have side effects and can invoke any arbitrary program on the host machine. Furthermore, the processing function may modify the rule list for this context or any other context, allowing the user to extend the functionality of the system.
+A sample user starts the program and has the option to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. The user can choose to message any number of these users, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
 
-Contexts form a tree structure, and the rules may change the current context to any other context within the tree. The root node of the tree is the \textit{top level} context. The top level context will come with standard functions for creating and modifying contexts.
+All messages sent using this system will be encrypted and signed using RSA. Every user will maintain a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program will verity that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model.) For group messages, each client will encrypt his message with the public keys of all the other peers, and he will sign it with his private key. Upon receiving a message, all clients will verify the signature.
 
+\subsection{Sample Session}
 \begin{lstlisting}
-> create math // creates new math context
-> switch math // enter math context 
-math > rule "2 + 2 -> true" "4" 
-// accept all strings of the format "2 + 2", output 4
-math > 2 + 2
-math: 4
-// compute 2 + 2
-math > "int: #1 + int: #2 -> true" "#1 + #2"
-// defines a more general function which takes any string with 
-// 2 integers being added together
-math > 5 + 9
-math: 14
-// our new function computes 5 + 9
-math > up
-// go up a context
-> "math expression: #1 -> true" "math(#1)"
-// define a function which takes an argument and evaluates it in
-// the math context
-> math expression: 1 + 1
-2
-// evaluate a math expression in the top level
- 
+> :discover
+
+IP Address		Username	RSA Fingerprint
+192.168.4.7		libman		4E8D A652 8149 72C7 ...
+192.168.16.3		sid		E4A7 2584 62C7 3274 ...
+
+> :message libman sid
+
+Creating group...
+Warning: Fingerprint for `libman` 
+does not match fingerprint found in keychain.
+Are you sure you wish to proceed? (Y/n) y
+
+Session started. Session UUID: 4b4e24c3-aa5c-42cf-8f0d-3187948201a3
+
+system: @libman (192.168.4.7) has connected.
+system: @sid (192.168.16.3) has connected.
+libman: what's up
+sid: hi
+
+> hello!
+		
+
 \end{lstlisting}
 
 \end{document}
