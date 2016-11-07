@@ -2,4 +2,5 @@
 *.fdb_latexmk
 *.fls
 charter/charter.pdf
+design/design.pdf
 *.log
