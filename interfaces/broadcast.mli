@@ -12,7 +12,7 @@ type user_info = {
 
 (* Configures UDP settings. *)
 
-val set_config: Config -> ()
+val set_config: Config -> unit
 
 (* Sends a broadcast out to the network.
   Binds a callback to the event that packets are received
