@@ -7,3 +7,6 @@ val read_input: unit -> string
 (* [print_to_console s] prints the string [s] to the console. Returns
    a unit. *)
 val print_to_console: string -> unit
+
+(* [main] runs the program. *)
+val main: unit -> unit

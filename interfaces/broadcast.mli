@@ -1,18 +1,17 @@
 open Udp (* From Jane Street *)
 
-(* A UDP broadcast sends a message to a "broadcast address" that all
-  users listen to. *)
-
+(* [broadcast_address] is the address we send broadcasts to, and the address that
+ * all online users listen to. *)
 type broadcast_address = string
 
-(* Configures UDP settings. *)
-
+(* [set_config config] configures UDP settings. *)
 val set_config: Config -> unit
 
-(* Sends a broadcast out to the network.
-  Binds a callback to the event that packets are received
-  from the broadcast address which parses the packet
-  and adds the user_info obtained from the packet to a list.
-  After some time, the list is returned. *)
+(* [send_broadcast broadcast_address] sends a
+ * broadcast out to the network. It then
+ * binds a callback to the event that packets are received
+ * from the broadcast address which parses the packet
+ * and adds the user_info obtained from the packet to a list.
+ * After some time, the list is returned. *)
 
 val send_broadcast: broadcast_address -> online_user list
