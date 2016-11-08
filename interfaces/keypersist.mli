@@ -1,4 +1,5 @@
 open Persistence
+open Data
 
 (* The type of a key store. *)
 type t

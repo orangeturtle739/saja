@@ -1,4 +1,5 @@
 open Persistence
+open Data
 
 type chatlog = (username * string) list
 
