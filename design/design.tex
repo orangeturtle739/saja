@@ -8,6 +8,7 @@
 \usepackage{booktabs}
 \usepackage{placeins}
 \usepackage{listings, lstautogobble}
+\usepackage{float}
 \graphicspath{ {/} }
 \lstset{basicstyle=\ttfamily}
 
@@ -72,7 +73,11 @@ sid: hi
 	\item Networking
 	\item Controller
 \end{itemize}
-\includegraphics[scale=0.5]{"Component and Connector Diagram".pdf}
+
+\begin{figure}[H]
+	\includegraphics[scale=0.5]{"Component and Connector Diagram".pdf}
+	\caption{Component and Connector Diagram}
+\end{figure}
 
 \subsection{System Design}
 \begin{itemize}
@@ -85,8 +90,10 @@ sid: hi
 	\item \textbf{Crypto}: handles encryption, decryption, and verification
 	\item \textbf{Controller}: takes textual input from user and carries out actions based on command 
 \end{itemize}
-\includegraphics[scale=0.75]{"Module Dependency Diagram".pdf}
-
+\begin{figure}[H]
+	\includegraphics[scale=0.75]{"Module Dependency Diagram".pdf}
+	\caption{Module Dependency Diagram}
+\end{figure}
 \subsection{Data}
 The data our system maintains is a keychain mapping between username strings and public keys. The message persistence maintains a store of the messages sent and received during the current session. We will use JSON to store this data. We are going to make use of maps for our keychain and message persistence. 
 
