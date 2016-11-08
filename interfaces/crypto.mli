@@ -1,10 +1,4 @@
-
-(* Type of the session id. Will be a 128 bit number (2 62 bit numbers)*)
-type session_id = int64 * int64
-(* Type of a public key. Will be whatever cryptokit uses *)
-type public_key = int list
-(* Type of a private key. Will be whatever cryptokit uses *)
-type private_key = int list
+open Data
 
 (*[encrypt recipient_public_key signing_key sessiond_id message] returns the
  * pair (next_session_id, encrypted_message). The returned encrypted message
