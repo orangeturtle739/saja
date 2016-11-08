@@ -4,11 +4,6 @@ open Udp (* From Jane Street *)
   users listen to. *)
 
 type broadcast_address = string
-type user_info = {
-  ip_address: string;
-  public_key: string;
-  username: string
-}
 
 (* Configures UDP settings. *)
 
@@ -20,4 +15,4 @@ val set_config: Config -> unit
   and adds the user_info obtained from the packet to a list.
   After some time, the list is returned. *)
 
-val send_broadcast: broadcast_address -> user_info list
+val send_broadcast: broadcast_address -> online_user list
