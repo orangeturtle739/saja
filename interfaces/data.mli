@@ -5,7 +5,7 @@ type public_key = int list
  * uses *)
 type private_key = int list
 
-(* Type of the session id. Will be a 128 bit number (2 62 bit numbers)*)
+(* Type of the session id. Will be a 128 bit number (2 64 bit numbers)*)
 type session_id = int64 * int64
 
 (* The type of a a username *)
