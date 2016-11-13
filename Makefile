@@ -1,14 +1,20 @@
+default: main
+
+prelim: charter design interfaces
+
+charter:
+	cd charter; make
+design:
+	cd design; make
+interfaces:
+	cd interfaces; make
+
 main:
-	cd src; ocamlbuild -pkgs oUnit main.byte
+	cd src; corebuild -pkgs oUnit main.byte
 	
 test:
-	ocamlbuild -pkgs oUnit,str,unix test.byte && ./test.byte
-
-check:
-	bash checkenv.sh 
+	corebuild -pkgs oUnit,str,unix test.byte && ./test.byte
 
 clean:
 	cd src; ocamlbuild -clean
 	
-zip:
-	zip a4src.zip *.ml{,i,y,l}
