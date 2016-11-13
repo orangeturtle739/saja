@@ -13,7 +13,7 @@ main:
 	cd src; corebuild -pkgs oUnit main.byte
 	
 test:
-	corebuild -pkgs oUnit,str,unix test.byte && ./test.byte
+	cd src; corebuild -pkgs oUnit,str,unix test.byte && ./test.byte
 
 clean:
 	cd src; ocamlbuild -clean
