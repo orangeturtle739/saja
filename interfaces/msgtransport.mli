@@ -10,7 +10,10 @@ open Data
  * action succeded else returns false. *)
 val send_msg: ipaddress -> encrypted_string -> int -> bool
 
-(* [handle_msg ()] takes a function from an encrypted string (message
-    received) to a unit and returns a unit. This binds the function passed in
-    as a callback whenever a message is received. *)
-val handle_msg: (encrypted_string -> unit) -> unit
+(* [collect_msg ()] returns a list containing encrypted message sent by
+ * other clients. Returns [] if no messages have been recieved. *)
+val collect_msg: unit -> encrypted_string list
+
+(* [listen prt] listens to the any incoming messages from port [prt].
+ * Returns a unit. *)
+val listen: int -> unit
