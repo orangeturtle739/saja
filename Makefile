@@ -10,10 +10,10 @@ interfaces:
 	cd interfaces; make
 
 main:
-	cd src; corebuild -pkgs oUnit main.byte
+	cd src; corebuild -pkgs oUnit,async main.byte
 	
 test:
-	cd src; corebuild -pkgs oUnit,str,unix test.byte && ./test.byte
+	cd src; corebuild -pkgs oUnit,str,unix,async test.byte && ./test.byte
 
 clean:
 	cd src; ocamlbuild -clean
