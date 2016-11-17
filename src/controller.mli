@@ -11,9 +11,9 @@ type action =
   | ExitSession of session_id
 
 (* [program state] is a representation type containing the relevant
-  details of the program's state. *)
+   details of the program's state. *)
 type program_state
 
 (* [execute] takes an action and a program state and returns
-  a new program state with the action executed. *)
-val execute:  action -> program_state -> program_state
+   a new program state with the action executed. *)
+val execute: action -> program_state -> program_state
