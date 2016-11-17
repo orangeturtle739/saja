@@ -1,3 +1,5 @@
+open Data
+
 (* This module controls the I/O processes for the console. *)
 
 (* [read_input ()] reads the string typed bu the user into the console

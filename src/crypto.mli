@@ -12,9 +12,7 @@ val encrypt : public_key -> private_key -> session_id -> string ->
  * None. If this function is able to verify the signature, but unable to match
  * the session id in the message with a session id in [sessiond_ids], this
  * method returns None.*)
-val decrypt : public_key list -> private_key -> session_id list -> string
+val decrypt : (public_key * session_id) list -> private_key -> string
   -> (session_id * string) option
 
-(* [advance id] evaluates to the next ID in the sequence. Every time a message
- * within a session is received, the session ID should be advanced. *)
-val advance : session_id -> session_id
+val gen_keys : unit -> full_key_pair

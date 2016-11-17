@@ -1,3 +1,5 @@
+open Data
+
 (* [broadcast_address] is the address we send broadcasts to, and the address that
  * all online users listen to. *)
 type broadcast_address = string
