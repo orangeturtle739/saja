@@ -10,11 +10,11 @@ interfaces:
 	cd interfaces; make
 
 main:
-	cd src; corebuild -pkgs oUnit,async,cryptokit,yojson main.byte
+	cd src; make
 	
 test:
-	cd src; corebuild -pkgs oUnit,str,unix,async,cryptokit,yojson test.byte && ./test.byte
+	cd src; make test
 
 clean:
-	cd src; ocamlbuild -clean
+	cd src; make clean
 	
