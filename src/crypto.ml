@@ -12,16 +12,6 @@ let aes_block_size = 16
 let padding = Padding.length
 let chaining = Cipher.CBC
 
-let to_public_key key =
-  {
-    n = key.RSA.n;
-    e = key.RSA.e;
-  }
-let to_private_key key =
-  {
-    n = key.RSA.n;
-    d = key.RSA.d;
-  }
 let to_full_key key =
   {
     n = key.RSA.n;
@@ -46,18 +36,6 @@ let from_private_key (key:private_key) =
     RSA.n = key.n;
     RSA.d = key.d;
     RSA.e = "";
-    RSA.p = "";
-    RSA.q = "";
-    RSA.dp = "";
-    RSA.dq = "";
-    RSA.qinv = "";
-  }
-let from_full_keykey (key:full_key) =
-  {
-    RSA.size = (String.length key.n) * 8;
-    RSA.n = key.n;
-    RSA.e = key.e;
-    RSA.d = key.d;
     RSA.p = "";
     RSA.q = "";
     RSA.dp = "";
