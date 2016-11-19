@@ -4,4 +4,5 @@ PKG ANSITerminal
 PKG cryptokit
 PKG async
 PKG async_extra
+PKG scrypt
 B _build

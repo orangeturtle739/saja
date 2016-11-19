@@ -21,3 +21,10 @@ val advance : session_id -> session_id
 
 (* Generates a new session ID *)
 val gen_session_id : unit -> session_id
+
+(* [pass_encrypt password thing] encrypts the thing with the specified
+ * password. Returns None if there is a problem. *)
+val pass_encrypt : string -> string -> string
+(* [pass_decrypt password thing] decrypts the thing with the specified
+ * password. Returns None if there is a problem (like a wrong password). *)
+val pass_decrypt : string -> string -> string option

@@ -1,4 +1,5 @@
 #require "cryptokit";;
+#require "scrypt"
 #directory "_build";;
 #load_rec "crypto.cmo";;
 open Crypto;;

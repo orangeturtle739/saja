@@ -1,0 +1,4 @@
+scrypt
+cryptokit
+ctypes
+ctypes-foreign

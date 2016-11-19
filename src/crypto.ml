@@ -160,3 +160,8 @@ let gen_keys () =
     full_encryption_key = to_full_key encryption_key;
     full_signing_key = to_full_key signing_key;
   }
+
+let pass_encrypt password thing = Scrypt.encrypt_exn thing password |>
+                                  transform_string (Base64.encode_compact ())
+let pass_decrypt  password thing = Scrypt.decrypt
+    (thing |> transform_string (Base64.decode ())) password
