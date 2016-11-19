@@ -12,9 +12,12 @@ let alice_public = {n = alice.full_signing_key.n; e = alice.full_signing_key.e}
 let tests = "test suite" >::: [
     "crypt_loop"  >::
     (fun _ -> assert_equal (Some ("Hi bob!", alice_public)) (
-    let encr = Crypto.encrypt bob_public alice_private "Hi bob!" in
-    let decr = Crypto.decrypt [alice_public] bob_private encr in
-    decr));
+         Crypto.encrypt bob_public alice_private "Hi bob!" |>
+         Crypto.decrypt [alice_public] bob_private));
+    "pass_crypt_loop"  >::
+    (fun _ -> assert_equal (Some "Hi bob!")
+        (Crypto.pass_encrypt "password" "Hi bob!" |>
+         Crypto.pass_decrypt "password"));
   ]
 
 let _ = run_test_tt_main tests
