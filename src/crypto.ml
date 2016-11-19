@@ -138,7 +138,7 @@ let try_decrypt public_key private_key data =
           (rsa_block_size + aes_block_size) (String.length message - (rsa_block_size + aes_block_size)) in
       let session_key = rsa_decrypt private_key encrypted_session_key in
       let session_decryption = aes_decryption iv session_key in
-      Some (aes_decrypt session_decryption encrypted_body)
+      Some (aes_decrypt session_decryption encrypted_body, public_key)
   with
   | Invalid_argument _ -> None
 
@@ -147,9 +147,11 @@ let rec decrypt public_key_list private_key message = match public_key_list with
   | h::t -> let attempt = try_decrypt h private_key message in
     if attempt <> None then attempt else decrypt t private_key message
 
-(* [advance id] evaluates to the next ID in the sequence. Every time a message
- * within a session is received, the session ID should be advanced. *)
-let advance session_id = 2
+let advance session_id = hmac session_id |>
+                         transform_string (Base64.encode_compact ())
+
+let gen_session_id () = Random.string rand hash_length |>
+                        transform_string (Base64.encode_compact ())
 
 let gen_keys () =
   let encryption_key = RSA.new_key ~rng:rand default_key_size in
