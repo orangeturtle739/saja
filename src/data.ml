@@ -19,8 +19,8 @@ type full_key = {
 
 (* A full key pair, with a full signing key and a full encryption key *)
 type full_key_pair = {
-  signing_key: full_key;
-  encryption_key: full_key;
+  full_signing_key: full_key;
+  full_encryption_key: full_key;
 }
 
 (* A public key pair, with a public signing key for verifying signatures
