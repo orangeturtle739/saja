@@ -13,7 +13,13 @@ val encrypt : public_key -> private_key -> string -> string
  * method returns None.*)
 val decrypt : public_key list -> private_key -> string -> (string * public_key) option
 
+(* Generates new random RSA keys *)
 val gen_keys : unit -> full_key_pair
+
+(* Determines the key fingerprint *)
+val fingerprint : public_key_pair -> string
+(* Determines the key fingerprint of the public keys *)
+val fingerprint_f : full_key_pair -> string
 
 (* [advance id] evaluates to the next ID in the sequence. Every time a message
  * within a session is received, the session ID should be advanced. *)

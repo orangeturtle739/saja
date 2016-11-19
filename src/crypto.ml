@@ -139,6 +139,20 @@ let gen_keys () =
     full_signing_key = to_full_key signing_key;
   }
 
+let fingerprint (p_key_pair:public_key_pair) =
+  let join (p:public_key) = p.n^p.e in
+  let full = (join p_key_pair.signing_key)^(join p_key_pair.encryption_key) in
+  hmac full |> transform_string (Base64.encode_compact ())
+let fingerprint_f (f_key_pair:full_key_pair) =
+  let extract_public_key (key:full_key) = {
+    n = key.n;
+    e = key.e;
+  } in
+  fingerprint {
+    signing_key = extract_public_key f_key_pair.full_signing_key;
+    encryption_key = extract_public_key f_key_pair.full_encryption_key;
+  }
+
 let pass_encrypt password thing = Scrypt.encrypt_exn thing password |>
                                   transform_string (Base64.encode_compact ())
 let pass_decrypt  password thing = Scrypt.decrypt
