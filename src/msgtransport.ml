@@ -30,7 +30,10 @@ let send_msg_helper ip port msg =
   fun () -> return true
 
 let send_msg ip port msg =
-  let _ = send_msg_helper ip port msg in true
+  let status = send_msg_helper ip port msg in
+  match Deferred.peek status with
+  | Some v -> v
+  | None   -> false
 
 let listen () =
   print_endline "Server running";
