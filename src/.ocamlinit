@@ -3,8 +3,10 @@
 #require "yojson"
 #directory "_build";;
 #load_rec "crypto.cmo";;
+#load_rec "persistence.cmo";;
 open Crypto;;
 open Data;;
+open Persistence;;
 
 let foobar () =
 let alice = Crypto.gen_keys () in
