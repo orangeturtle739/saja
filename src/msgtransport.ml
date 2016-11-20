@@ -40,9 +40,11 @@ let listen () =
   in
   ignore (server : (Socket.Address.Inet.t, int) Tcp.Server.t Deferred.t)
 
-let _ = listen ()
+(*let _ = listen ()
 
 let _ = after (Core.Std.sec 3.) >>=
   fun _ -> send_msg "localhost" 12999 "556688 Crpytic Message from Jacob Glueck!"
 
-let _ = Scheduler.go()
+let _ = Scheduler.go()*)
+
+let handle_msg f = ()
