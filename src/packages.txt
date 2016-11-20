@@ -1,4 +1,6 @@
-scrypt
+async
+async-extra
 cryptokit
 ctypes
 ctypes-foreign
+scrypt
