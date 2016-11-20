@@ -19,7 +19,7 @@ let rec copy_blocks buffer r w =
     print_endline "Wrote.";
     Writer.flushed w
 
-let send_msg ip port msg =
+let send_msg_helper ip port msg =
   print_endline "Sending...";
   let conn = Tcp.to_host_and_port ip port in
   Tcp.connect conn  >>= fun (addr,r,w) ->
@@ -28,6 +28,9 @@ let send_msg ip port msg =
   print_endline "Sent message!";
   Writer.flushed w >>=
   fun () -> return true
+
+let send_msg ip port msg =
+  let _ = send_msg_helper ip port msg in true
 
 let listen () =
   print_endline "Server running";
