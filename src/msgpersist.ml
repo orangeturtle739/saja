@@ -10,6 +10,8 @@ let write_log (file: filename) (log: chatlog) =
 							 `List [`String user; `String msg]) log) in
 	write_file file j
 
+(* [parse_msg msg] converts a JSON list representing a message entry
+ * into a tuple (user, message). *)
 let parse_msg (msg: json) =
 	match Util.to_list msg with
 	| [user; entry] -> Util.((to_string user, to_string entry))
