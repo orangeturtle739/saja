@@ -1,10 +1,6 @@
 open Data
 open Async.Std
 
-(* [broadcast_address] is the address we send broadcasts to, and the address that
- * all online users listen to. *)
-type broadcast_address = string
-
 (* [send_broadcast broadcast_address] sends a
  * broadcast out to the network. It then
  * binds a callback to the event that packets are received
