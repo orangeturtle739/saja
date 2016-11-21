@@ -79,16 +79,18 @@ let send_broadcast (address : string) : unit Deferred.t =
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
   let buffer = Iobuf.of_string broadcast_string in
   let send_func = Or_error.ok_exn (Udp.sendto ()) in
+  print_endline "Sent.";
   try_with ~extract_exn:true
     (fun () -> send_func socket_fd buffer broadcast_address) >>=
       function
-      | Ok () -> setup_exchange_server
+      | Ok () -> print_endline "Sent."; setup_exchange_server
       | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
         (Core.Std.Unix.error_message err))
     >>= fun () -> return ()
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
+  print_endline "Started listening.";
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
   Udp.recvfrom_loop socket_fd (fun message_buffer addr ->
     let address = Socket.Address.Inet.to_string addr in
@@ -98,7 +100,7 @@ let listen_for_broadcast : unit Deferred.t =
     else ())
 
 let _ = after (Core.Std.sec 1.) >>=
-  fun _ -> listen_for_broadcast >>= fun _ -> let _ = List.map
+  fun _ -> (* listen_for_broadcast >>= fun _ -> *) let _ = List.map
   (get_broadcast_addresses ())
   (fun broadcast_addr -> send_broadcast broadcast_addr  >>| fun _ -> print_endline "Broadcast sent.") in return ()
 
