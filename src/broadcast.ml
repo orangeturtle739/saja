@@ -70,6 +70,6 @@ let listen_for_broadcast : unit Deferred.t =
     else ())
 
 let _ = after (Core.Std.sec 1.) >>=
-  fun _ -> (send_broadcast >>| (fun _ -> print_endline "Broadcast sent."))
+  fun _ -> listen_for_broadcast >>= fun _ -> send_broadcast >>| fun _ -> print_endline "Broadcast sent."
 
 let _ = Scheduler.go()
