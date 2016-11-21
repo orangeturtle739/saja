@@ -1,3 +1,4 @@
+open Data
 open Core.Std
 open Async.Std
 
@@ -14,18 +15,29 @@ let get_broadcast_address () : string =
   https://github.com/tox4j/deprecated-tox4j/blob/a84a28e8c24821407652c2ed3c3bc43a1942a4ee/projects/tox4j/src/main/ocaml/core/network.ml
   *)
 
+let assemble_online_user addr public_key =
+  {
+    user={
+      username="OnlineUser"; (* TODO replace this with correct value *)
+      public_key=public_key
+    };
+    ip_address=addr
+  }
+
 (* [setup_exchange_server] sets up a TCP server that listens for messages from
     respondents to a broadcast. *)
 let setup_exchange_server : unit Deferred.t =
   let socket = Tcp.on_port exchange_port in
+  let rec read_responses_callback = fun addr r w ->
+    (* Callback when message received from client *)
+    let buffer = String.create (128) in
+    Reader.read r buffer >>= function
+      (* [buffer] contains a respondent's public key. Need to store in the keystore if it's not there *)
+      | `Eof -> failwith "EOF"
+      | `Ok msg -> return (print_endline "TODO: Do something with client information here...")
+    >>= fun () -> Writer.write w "TODO: Response goes here"; Writer.flushed w >>= fun () -> read_responses_callback addr r w
+  in
   let server = Tcp.Server.create socket
-    (fun addr r w ->
-      (* Callback when message received from client *)
-      let buffer = String.create (128) in
-      Reader.read r buffer >>= function
-        | `Eof -> return (print_endline "A client sent an empty message.")
-        | `Ok msg -> return (print_endline "TODO: Do something with client information here...")
-      >>= fun () -> Writer.write w "TODO: Response goes here"; Writer.flushed w >>= fun () -> return ())
   in return(ignore(server))
 
 (* [setup_exchange_client] establishes a TCP connection to an address [addr] that
@@ -39,8 +51,9 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
       (* Read in response *)
       let buffer = String.create (128) in
       Reader.read r buffer >>= function
-        | `Eof -> return (print_endline "A client sent an empty message.")
-        | `Ok msg -> return (print_endline "TODO: Do something with server information here...")
+        (* [buffer] contains the new user's public key. Need to store in the keystore if it's not there *)
+        | `Eof -> failwith "EOF"
+        | `Ok msg -> return (print_endline buffer)
       >>= fun () -> return ()
 
 (* [send_broadcast] sends a broadcast and sets up a TCP server
