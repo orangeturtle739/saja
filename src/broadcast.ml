@@ -16,15 +16,17 @@ let get_broadcast_address () : string =
 
 (* [setup_exchange_server] sets up a TCP server that listens for messages from
     respondents to a broadcast. *)
-let setup_exchange_server : unit =
+let setup_exchange_server : unit Deferred.t =
   let socket = Tcp.on_port exchange_port in
-  let server = Tcp.Server.create socket in
-  let _ = fun addr r w ->
-    let buffer = String.create (128) in
-    Reader.read r buffer >>= function
-      | `Eof -> print_endline "A client sent an empty message."; return ()
-      | `Ok msg -> print_endline "Do something with information here..."; return () (* Also respond here *)
-  in ()
+  let server = Tcp.Server.create socket
+    (fun addr r w ->
+      (* Callback when message received from client *)
+      let buffer = String.create (128) in
+      Reader.read r buffer >>= function
+        | `Eof -> return (print_endline "A client sent an empty message.")
+        | `Ok msg -> return (print_endline "TODO: Do something with client information here...")
+      >>= fun () -> Writer.write w "TODO: Response goes here"; Writer.flushed w >>= fun () -> return ())
+  in return(ignore(server))
 
 (* [setup_exchange_client] establishes a TCP connection to an address [addr] that
     has sent a broadcast to the client. It then sends information over this
@@ -33,8 +35,13 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
   let conn = Tcp.to_host_and_port addr exchange_port in
   Tcp.connect conn  >>= fun (addr,r,w) ->
     Writer.write w "Information goes here";
-    Writer.flushed w >>=
-    fun () -> return ()
+    Writer.flushed w >>= fun () ->
+      (* Read in response *)
+      let buffer = String.create (128) in
+      Reader.read r buffer >>= function
+        | `Eof -> return (print_endline "A client sent an empty message.")
+        | `Ok msg -> return (print_endline "TODO: Do something with server information here...")
+      >>= fun () -> return ()
 
 (* [send_broadcast] sends a broadcast and sets up a TCP server
     to listen for information sent from respondents to the broadcast. *)
@@ -45,11 +52,12 @@ let send_broadcast : unit Deferred.t =
   let buffer = Iobuf.of_string broadcast_string in
   let send_func = Or_error.ok_exn (Udp.sendto ()) in
   try_with ~extract_exn:true
-    (fun () -> send_func socket_fd buffer broadcast_address) >>|
+    (fun () -> send_func socket_fd buffer broadcast_address) >>=
       function
-      | Ok () -> setup_exchange_server; ()
-      | Error (Unix.Unix_error (err, _, _)) -> print_endline
-        (Core.Std.Unix.error_message err)
+      | Ok () -> setup_exchange_server
+      | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
+        (Core.Std.Unix.error_message err))
+    >>= fun () -> return ()
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
