@@ -5,9 +5,24 @@ open Async.Std
 let broadcast_string = "BROADCAST"
 let udp_port = 3110
 let exchange_port = 5999
+let my_public_key = {
+  n="fake";
+  e="bogus"
+} (* TODO replace with an actual public key from keypersist *)
 
 let get_broadcast_address () : string =
   "10.148.127.255"
+
+(* Serializes a public key record into a string. *)
+let serialize_public_key (key : public_key) : string =
+  key.n ^ " " ^ key.e
+
+(* The public key string looks like n^" "^e. Unpack this into a public key record. *)
+let deserialize_public_key str =
+  let tokens = String.split str ~on:' ' in
+    match tokens with
+      | [n; e] -> {n=n; e=e}
+      | _ -> failwith "Malformatted public key string."
 
 (* Citation: This implementation of UDP broadcasts is loosely based on
   https://github.com/hverr/udptun/blob/7483c11c773c92bd4c6022329aebc33a843c64e6/bin/tunnel.ml
@@ -16,13 +31,14 @@ let get_broadcast_address () : string =
   *)
 
 let assemble_online_user addr public_key =
+  let _ =
   {
     user={
-      username="OnlineUser"; (* TODO replace this with correct value *)
+      username="OnlineUser"; (* TODO replace this with username from persistence modules *)
       public_key=public_key
     };
     ip_address=addr
-  }
+  } in ()
 
 (* [setup_exchange_server] sets up a TCP server that listens for messages from
     respondents to a broadcast. *)
@@ -34,8 +50,10 @@ let setup_exchange_server : unit Deferred.t =
     Reader.read r buffer >>= function
       (* [buffer] contains a respondent's public key. Need to store in the keystore if it's not there *)
       | `Eof -> failwith "EOF"
-      | `Ok msg -> return (print_endline "TODO: Do something with client information here...")
-    >>= fun () -> Writer.write w "TODO: Response goes here"; Writer.flushed w >>= fun () -> read_responses_callback addr r w
+      | `Ok msg ->  (let addr_string = Socket.Address.Inet.to_string addr in
+                    let public_key = deserialize_public_key buffer in
+      assemble_online_user addr_string public_key); return () (* TODO store user details in keypersist *)
+    >>= fun () -> Writer.write w (serialize_public_key my_public_key); Writer.flushed w >>= fun () -> read_responses_callback addr r w
   in
   let server = Tcp.Server.create socket
   in return(ignore(server))
@@ -46,7 +64,7 @@ let setup_exchange_server : unit Deferred.t =
 let setup_exchange_client (addr: string) : unit Deferred.t =
   let conn = Tcp.to_host_and_port addr exchange_port in
   Tcp.connect conn  >>= fun (addr,r,w) ->
-    Writer.write w "Information goes here";
+    Writer.write w (serialize_public_key my_public_key);
     Writer.flushed w >>= fun () ->
       (* Read in response *)
       let buffer = String.create (128) in
