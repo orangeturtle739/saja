@@ -1,21 +1,18 @@
 open Data
+open Keypersist
 open Core.Std
 open Async.Std
 
 let broadcast_string = "BROADCAST"
 let udp_port = 3110
 let exchange_port = 5999
-let my_public_key = {
-  n="fake";
-  e="bogus"
-} (* TODO replace with an actual public key from keypersist *)
 
 (* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
 let get_broadcast_addresses () : string list =
   ["10.148.127.255"] (* TODO replace with scraped output from ifconfig *)
 
 (* [serialize_public_key] serializes a public key record into a string. *)
-let serialize_public_key (key : public_key) : string =
+let serialize_public_key (key : full_key) : string =
   key.n ^ " " ^ key.e
 
 (* The public key string looks like n^" "^e. [deserialize_public_key] unpacks this into a public key record. *)
@@ -54,7 +51,7 @@ let setup_exchange_server : unit Deferred.t =
       | `Ok msg ->  (let addr_string = Socket.Address.Inet.to_string addr in
                     let public_key = deserialize_public_key buffer in
       assemble_online_user addr_string public_key); return () (* TODO store user details in keypersist *)
-    >>= fun () -> Writer.write w (serialize_public_key my_public_key); Writer.flushed w >>= fun () -> read_responses_callback addr r w
+    >>= fun () -> Writer.write w (serialize_public_key (retrieve_user_key (load_keystore()))); Writer.flushed w >>= fun () -> read_responses_callback addr r w
   in
   let server = Tcp.Server.create socket
   in return(ignore(server))
@@ -65,7 +62,7 @@ let setup_exchange_server : unit Deferred.t =
 let setup_exchange_client (addr: string) : unit Deferred.t =
   let conn = Tcp.to_host_and_port addr exchange_port in
   Tcp.connect conn  >>= fun (addr,r,w) ->
-    Writer.write w (serialize_public_key my_public_key);
+    Writer.write w (serialize_public_key (retrieve_user_key (load_keystore())));
     Writer.flushed w >>= fun () ->
       (* Read in response *)
       let buffer = String.create (128) in
