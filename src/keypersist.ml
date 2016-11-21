@@ -19,23 +19,6 @@ let key_from_json (user, (key: json)) =
 	Util.((user, {n = key |> member "n" |> to_string;
 				  e = key |> member "e" |> to_string}))
 
-(* [load_keystore] returns the currently written rendition of the key store
- * from file. *)
-let load_keystore () =
-	try
-		let j = read_file keyfile in
-		let public_key_list = Util.(j |> member "public" |> to_assoc) |> 
-					   		  List.map key_from_json in
-		let public_keys = List.fold_left (fun s (user, key) ->
-										 Store.add user key s) 
-						  Store.empty public_key_list in
-		let user_key = j |> Util.member "private" in
-		let user_key_info = {n = Util.(user_key |> member "n" |> to_string);
-							 d = Util.(user_key |> member "d" |> to_string)}
-		in {outside_keys = public_keys; user_key = user_key_info}
-	with
-		Sys_error _ -> failwith "No key file"
-
 (* [save_keystore store] saves the key store [store] to file. *)
 let save_keystore (store: t) =
 	let j = `Assoc [
@@ -52,6 +35,28 @@ let save_keystore (store: t) =
 	)
 	]
 	in write_file keyfile j
+
+(* [load_keystore] returns the currently written rendition of the key store
+ * from file. *)
+let load_keystore () =
+	try
+		let j = read_file keyfile in
+		let public_key_list = Util.(j |> member "public" |> to_assoc) |> 
+					   		  List.map key_from_json in
+		let public_keys = List.fold_left (fun s (user, key) ->
+										 Store.add user key s) 
+						  Store.empty public_key_list in
+		let user_key = j |> Util.member "private" in
+		let user_key_info = {n = Util.(user_key |> member "n" |> to_string);
+							 d = Util.(user_key |> member "d" |> to_string)}
+		in {outside_keys = public_keys; user_key = user_key_info}
+	with
+		Sys_error _ -> let empty_store = {
+			outside_keys = Store.empty;
+			user_key = {n = "0"; d = "0"}
+		} in
+		save_keystore empty_store;
+		empty_store
 
 (* [verify_key name key] is [true] if public key [key] is associated with
  * user [name]. *)
