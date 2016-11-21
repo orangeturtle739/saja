@@ -5,7 +5,7 @@ open Data
 module Store = Map.Make(String)
 
 (* The type of a key store. *)
-type t = {outside_keys: public_key Store.t; user_key: private_key}
+type t = {outside_keys: public_key Store.t; user_key: full_key}
 
 (* The name of the file where key data is stored. *)
 let keyfile = "keys.json"
@@ -29,7 +29,8 @@ let save_keystore (store: t) =
 	(
 		"private",
 		(`Assoc [
-			("n", `String store.user_key.n); 
+			("n", `String store.user_key.n);
+            ("e", `String store.user_key.e); 
 			("d", `String store.user_key.d)
 		])
 	)
@@ -48,12 +49,13 @@ let load_keystore () =
 						  Store.empty public_key_list in
 		let user_key = j |> Util.member "private" in
 		let user_key_info = {n = Util.(user_key |> member "n" |> to_string);
+							 e = Util.(user_key |> member "e" |> to_string);
 							 d = Util.(user_key |> member "d" |> to_string)}
 		in {outside_keys = public_keys; user_key = user_key_info}
 	with
 		Sys_error _ -> let empty_store = {
 			outside_keys = Store.empty;
-			user_key = {n = "0"; d = "0"}
+			user_key = {n = "0"; e = "0"; d = "0"}
 		} in
 		save_keystore empty_store;
 		empty_store
@@ -74,9 +76,9 @@ let write_key (user: username) (key: public_key) (store: t) =
 		{store with outside_keys = Store.add user key store.outside_keys} 
 	in save_keystore new_store; new_store
 
-(* [write_private_key key store] is [store] updated with the new private
+(* [write_user_key key store] is [store] updated with the new user
  * [key]. *)
-let write_private_key (key: private_key) (store: t) =
+let write_user_key (key: full_key) (store: t) =
 	let new_store = 
 		{store with user_key = key} 
 	in save_keystore new_store; new_store
@@ -86,6 +88,7 @@ let write_private_key (key: private_key) (store: t) =
 let retrieve_keys (store: t) =
 	Store.bindings store.outside_keys
 
-(* [retrieve_private_key store] is the private key stored in the key store. *)
-let retrieve_private_key (store: t) =
+(* [retrieve_user_key store] is the full key of the user stored in the
+ * key store. *)
+let retrieve_user_key (store: t) =
 	store.user_key
