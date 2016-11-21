@@ -7,7 +7,7 @@ open Async.Std
  * from the broadcast address which parses the packet
  * and adds the user_info obtained from the packet to a list.
  * After some time, the list is returned. *)
-val send_broadcast: unit Deferred.t
+val send_broadcast: ip_address -> unit Deferred.t
 
 (* [handle_broadcast] takes a function from online_user to a unit and
     returns a unit. It binds this function as a callback that processes
