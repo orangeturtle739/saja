@@ -76,22 +76,25 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
 let rec send_broadcast (address : string) : unit Deferred.t =
   let broadcast_address =
     (Socket.Address.Inet.create (Unix.Inet_addr.of_string address) udp_port) in print_endline "foo 1";
-  let foo = Std.Socket.create Std.Socket.Type.udp in
-  let _ = Std.Socket.setopt foo Std.Socket.Opt.broadcast in
+  let socket = Std.Socket.create Std.Socket.Type.udp in
+  let _ = Std.Socket.setopt socket Std.Socket.Opt.broadcast in
   let buffer = Iobuf.of_string broadcast_string in print_endline "foo 3";
   let send_func = Or_error.ok_exn (Udp.sendto ()) in print_endline "foo 4";
-  Std.Socket.bind foo (Std.Socket.Address.Inet.create_bind_any udp_port) >>= fun sock ->
+  Std.Socket.bind socket (Std.Socket.Address.Inet.create_bind_any 0) >>= fun sock ->
   (fun () -> send_func (Std.Socket.fd sock) buffer broadcast_address) |>
-  try_with >>| function
+  try_with >>| (function
   | Ok () -> print_endline "Sent."
   | Error (Unix.Unix_error (err, _, _)) -> print_endline "Error";
-    Core.Std.Unix.error_message err |> print_endline
+    Core.Std.Unix.error_message err |> print_endline) >>= fun _ ->
+  Async.Std.after (Core.Std.sec 1.) >>= fun _ ->
+  send_broadcast address
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast () : unit Deferred.t =
   print_endline "Started listening.";
-  let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
-  Udp.recvfrom_loop socket_fd (fun message_buffer addr ->
+  let socket = Std.Socket.create Std.Socket.Type.udp in
+  Std.Socket.bind socket (Std.Socket.Address.Inet.create_bind_any udp_port) >>= fun sock ->
+  Udp.recvfrom_loop (Std.Socket.fd sock) (fun message_buffer addr ->
       print_endline "Got it.";
       let address = Socket.Address.Inet.to_string addr in
       let message = Iobuf.to_string message_buffer in
