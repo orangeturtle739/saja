@@ -1,6 +1,6 @@
 default: main
 main:
-	corebuild -pkgs oUnit,async,cryptokit,yojson,scrypt main.byte
+	corebuild -pkgs oUnit,async,cryptokit,yojson,scrypt,ANSITerminal main.byte
 	
 test:
 	corebuild -pkgs oUnit,str,unix,async,cryptokit,yojson,scrypt test.byte && ./test.byte

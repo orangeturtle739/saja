@@ -1,4 +1,5 @@
 open Data
+open Msgtransport
 
 (* [action] represents an action taken. *)
 type action =
@@ -28,3 +29,14 @@ let execute (command: action) (state: program_state) =
     | SendMessage msg -> failwith "Unimplemented"
     | GetInfo session -> failwith "Unimplemented"
     | ExitSession session -> failwith "Unimplemented"
+
+let main keys =
+    let _ = listen () in
+    let _ = Console.read_input () in
+    ()
+
+let () =
+    ANSITerminal.(print_string [red]
+        "Welcome to GEM - Glueck Encrypted Messaging.\n");
+    let keys = Keypersist.load_keystore () in
+    main keys
