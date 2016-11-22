@@ -2,6 +2,13 @@ open Data
 open Async.Std
 open Async_unix
 
+(* Documentation links:
+ * https://ocaml.janestreet.com/ocaml-core/109.12.00/doc/core/Or_error.html
+ * https://caml.inria.fr/pub/docs/manual-ocaml/libref/Unix.html
+ * https://caml.inria.fr/pub/docs/manual-ocaml/libref/Unix.html#VALsetsockopt
+ * https://ocaml.janestreet.com/ocaml-core/111.28.00/doc/async_unix/#Std.Socket
+ *)
+
 let broadcast_string = "gem-broadcast"
 let udp_port = 31100
 let discovery_callback = ref (fun _ -> ())
