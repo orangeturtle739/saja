@@ -1,11 +1,10 @@
 open Data
-open Keypersist
 open Core.Std
 open Async.Std
 
 let broadcast_string = "BROADCAST"
-let udp_port = 3110
-let exchange_port = 5999
+let udp_port = 31100
+let exchange_port = 59999
 let username = "amit" (* TODO replace with username specified in controller *)
 let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (load_keystore())) in Controller *)
 
