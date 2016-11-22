@@ -96,13 +96,14 @@ let listen_for_broadcast () : unit Deferred.t =
   Std.Socket.bind socket (Std.Socket.Address.Inet.create_bind_any udp_port) >>= fun sock ->
   Udp.recvfrom_loop (Std.Socket.fd sock) (fun message_buffer addr ->
       print_endline "Got it.";
+      (*
       let address = Socket.Address.Inet.to_string addr in
       let message = Iobuf.to_string message_buffer in
       if message = broadcast_string then
         upon (setup_exchange_client address) (fun _ -> ())
-      else ())
+      else () *) )
 
 let _ = send_broadcast (get_broadcast_address())
-let _ = listen_for_broadcast
+let _ = listen_for_broadcast ()
 
 let _ = Scheduler.go()
