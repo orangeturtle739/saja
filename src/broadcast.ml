@@ -11,7 +11,7 @@ let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (lo
 
 (* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
 let get_broadcast_address () : string =
-  "255.255.255.255" (* TODO replace with scraped output from ifconfig *)
+  "192.168.1.255" (* TODO replace with scraped output from ifconfig *)
 
 (* [serialize_user_info] serializes a username and a key into a string. *)
 let serialize_user_info (username: string) (key : full_key) : string =
