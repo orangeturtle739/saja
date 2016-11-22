@@ -1,5 +1,5 @@
 open Data
-open Async
+open Async.Std
 
 (* This module controls the I/O processes for the console. *)
 

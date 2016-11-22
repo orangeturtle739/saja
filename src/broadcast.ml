@@ -39,15 +39,15 @@ let deserialize_user_info (msg: string) (addr: string) : unit =
 
 (* [setup_exchange_server] sets up a TCP server that listens for messages from
     respondents to a broadcast. *)
-let setup_exchange_server : unit Deferred.t =
-  let socket = Tcp.on_port exchange_port in
-  let rec read_responses_callback = fun addr r w ->
+let setup_exchange_server () : unit Deferred.t =
+  let socket = print_endline "going to make socket"; Tcp.on_port exchange_port in
+  let rec read_responses_callback = print_endline "made socket"; fun addr r w ->
     (* Callback when message received from client *)
     let buffer = String.create (128) in
     Reader.read r buffer >>= function
       (* [buffer] contains a respondent's public key. Need to store in the keystore if it's not there *)
-      | `Eof -> failwith "EOF"
-      | `Ok msg ->  (let addr_string = Socket.Address.Inet.to_string addr in
+      | `Eof -> print_endline "EOF????"; failwith "EOF"
+      | `Ok msg -> print_endline "OK msg?"; (let addr_string = Socket.Address.Inet.to_string addr in
                       deserialize_user_info addr_string buffer); return () (* TODO store user details in keypersist from Controller *)
     >>= fun () -> Writer.write w (serialize_user_info username my_key); Writer.flushed w >>= fun () -> read_responses_callback addr r w
   in
@@ -78,13 +78,11 @@ let rec send_broadcast (address : string) : unit Deferred.t =
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
   let buffer = Iobuf.of_string broadcast_string in
   let send_func = Or_error.ok_exn (Udp.sendto ()) in
-  try_with ~extract_exn:true
-    (fun () -> send_func socket_fd buffer broadcast_address) >>=
-      function
-      | Ok () -> print_endline "Sent."; setup_exchange_server
-      | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
-        (Core.Std.Unix.error_message err))
-    >>= fun () -> send_broadcast address
+    try_with ~extract_exn:true
+      (fun () -> send_func socket_fd buffer broadcast_address) >>= function
+         | Ok () -> print_endline "Sent."; return ()
+	 | Error (Unix.Unix_error (err, _, _)) -> return (print_endline(Core.Std.Unix.error_message err))
+					        >>| (fun () -> ())
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
@@ -98,8 +96,7 @@ let listen_for_broadcast : unit Deferred.t =
       upon (setup_exchange_client address) (fun _ -> ())
     else ())
 
-let _ = after (Core.Std.sec 1.) >>=
-  (fun _ -> send_broadcast (get_broadcast_address())) >>= (fun _ -> listen_for_broadcast) >>= fun _ -> return ()
-
+let _ = send_broadcast (get_broadcast_address())
+let _ = listen_for_broadcast
 
 let _ = Scheduler.go()

@@ -1,5 +1,6 @@
 open Data
 open Msgtransport
+open Console
 
 (* [action] represents an action taken. *)
 type action =
