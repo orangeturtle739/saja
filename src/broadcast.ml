@@ -3,15 +3,14 @@ open Core.Std
 open Async.Std
 open Async_unix
 
-let broadcast_string = "BROADCAST"
+let broadcast_string = "gem-broadcast"
 let udp_port = 31100
 let exchange_port = 59999
 let username = "amit" (* TODO replace with username specified in controller *)
 let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (load_keystore())) in Controller *)
 
-(* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
-let get_broadcast_address () : string =
-  "192.168.1.255" (* TODO replace with scraped output from ifconfig *)
+(* [broadcast_address] gets the computer's broadcast addresses. *)
+let broadcast_address : string = "255.255.255.255"
 
 (* [serialize_user_info] serializes a username and a key into a string. *)
 let serialize_user_info (username: string) (key : full_key) : string =
@@ -96,14 +95,13 @@ let listen_for_broadcast () : unit Deferred.t =
   Std.Socket.bind socket (Std.Socket.Address.Inet.create_bind_any udp_port) >>= fun sock ->
   Udp.recvfrom_loop (Std.Socket.fd sock) (fun message_buffer addr ->
       print_endline "Got it.";
-      (*
       let address = Socket.Address.Inet.to_string addr in
       let message = Iobuf.to_string message_buffer in
       if message = broadcast_string then
-        upon (setup_exchange_client address) (fun _ -> ())
-      else () *) )
+        print_endline address
+      else ())
 
-let _ = send_broadcast (get_broadcast_address())
+let _ = send_broadcast broadcast_address
 let _ = listen_for_broadcast ()
 
 let _ = Scheduler.go()
