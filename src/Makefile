@@ -7,4 +7,6 @@ test:
 
 clean:
 	ocamlbuild -clean
+amit:
+	corebuild -pkgs oUnit,async,yojson broadcast.byte
 	
