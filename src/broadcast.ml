@@ -9,8 +9,8 @@ let username = "amit" (* TODO replace with username specified in controller *)
 let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (load_keystore())) in Controller *)
 
 (* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
-let get_broadcast_addresses () : string list =
-  ["10.148.127.255"] (* TODO replace with scraped output from ifconfig *)
+let get_broadcast_address () : string =
+  "10.148.127.255" (* TODO replace with scraped output from ifconfig *)
 
 (* [serialize_user_info] serializes a username and a key into a string. *)
 let serialize_user_info (username: string) (key : full_key) : string =
@@ -48,7 +48,7 @@ let setup_exchange_server : unit Deferred.t =
       (* [buffer] contains a respondent's public key. Need to store in the keystore if it's not there *)
       | `Eof -> failwith "EOF"
       | `Ok msg ->  (let addr_string = Socket.Address.Inet.to_string addr in
-                      deserialize_user_info addr_string buffer); print_endline "Received."; return () (* TODO store user details in keypersist from Controller *)
+                      deserialize_user_info addr_string buffer); return () (* TODO store user details in keypersist from Controller *)
     >>= fun () -> Writer.write w (serialize_user_info username my_key); Writer.flushed w >>= fun () -> read_responses_callback addr r w
   in
   let server = Tcp.Server.create socket
@@ -72,7 +72,7 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
 
 (* [send_broadcast] sends a broadcast and sets up a TCP server
     to listen for information sent from respondents to the broadcast. *)
-let rec send_broadcast (address : string) : unit Deferred.t =
+let send_broadcast (address : string) : unit Deferred.t =
   let broadcast_address =
     (Socket.Address.Inet.create (Unix.Inet_addr.of_string address) udp_port) in
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
@@ -85,7 +85,7 @@ let rec send_broadcast (address : string) : unit Deferred.t =
       | Ok () -> print_endline "Sent."; setup_exchange_server
       | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
         (Core.Std.Unix.error_message err))
-        >>= fun () -> send_broadcast address
+    >>= fun () -> return ()
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
@@ -99,9 +99,7 @@ let listen_for_broadcast : unit Deferred.t =
     else ())
 
 let _ = after (Core.Std.sec 1.) >>=
-  fun _ -> (* listen_for_broadcast >>= fun _ -> *) let _ = List.map
-  (get_broadcast_addresses ())
-  (fun broadcast_addr -> send_broadcast broadcast_addr  >>| fun _ -> print_endline "Broadcast sent.") in return ()
+  fun _ -> (fun _ -> send_broadcast (get_broadcast_address())) >>= listen_for_broadcast >>= fun _ -> return ()
 
 
 let _ = Scheduler.go()
