@@ -11,7 +11,7 @@ let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (lo
 
 (* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
 let get_broadcast_address () : string =
-  "192.168.1.255" (* TODO replace with scraped output from ifconfig *)
+  "255.255.255.255" (* TODO replace with scraped output from ifconfig *)
 
 (* [serialize_user_info] serializes a username and a key into a string. *)
 let serialize_user_info (username: string) (key : full_key) : string =
@@ -77,15 +77,15 @@ let rec send_broadcast (address : string) : unit Deferred.t =
   let broadcast_address =
     (Socket.Address.Inet.create (Unix.Inet_addr.of_string address) udp_port) in print_endline "foo 1";
   let socket = Std.Socket.create Std.Socket.Type.udp in
-  let _ = Std.Socket.setopt socket Std.Socket.Opt.broadcast in
+  Std.Socket.setopt socket Std.Socket.Opt.broadcast true;
   let buffer = Iobuf.of_string broadcast_string in print_endline "foo 3";
   let send_func = Or_error.ok_exn (Udp.sendto ()) in print_endline "foo 4";
   Std.Socket.bind socket (Std.Socket.Address.Inet.create_bind_any 0) >>= fun sock ->
   (fun () -> send_func (Std.Socket.fd sock) buffer broadcast_address) |>
   try_with >>| (function
-  | Ok () -> print_endline "Sent."
-  | Error (Unix.Unix_error (err, _, _)) -> print_endline "Error";
-    Core.Std.Unix.error_message err |> print_endline) >>= fun _ ->
+      | Ok () -> print_endline "Sent."
+      | Error (Unix.Unix_error (err, _, _)) -> print_endline "Error";
+        Core.Std.Unix.error_message err |> print_endline) >>= fun _ ->
   Async.Std.after (Core.Std.sec 1.) >>= fun _ ->
   send_broadcast address
 
