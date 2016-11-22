@@ -32,27 +32,25 @@ let send_broadcast (address : string) : bool Deferred.t =
 
 let bind_discovery callback = discovery_callback := callback
 
-(* [listen_for_broadcast] listens for UDP broadcasts and invokes the
- * discovery_callback if needed *)
-let listen_for_broadcast () : unit Deferred.t =
+let start_listening () =
   let socket = Std.Socket.create Std.Socket.Type.udp in
   Std.Socket.(bind socket
-                (Address.Inet.create_bind_any ~port:udp_port)) >>= fun sock ->
+                (Address.Inet.create_bind_any ~port:udp_port)) >>= (fun sock ->
   Udp.recvfrom_loop (Std.Socket.fd sock) (fun message_buffer addr ->
       let address = Socket.Address.Inet.to_string addr in
       let message = Core.Std.Iobuf.to_string message_buffer in
       if message = broadcast_string then
         !discovery_callback address
-      else ())
+      else ())) |> ignore
 
-(* Start listening for broadcasts *)
-let _ = listen_for_broadcast ()
-
-(* Demo code. Should be removed before submitting otherwise it will cause
- * problems *)
-let _ = bind_discovery (fun ip -> printf "Found peer at: %s\n" ip)
-let _ = Core.Std.sec 1. |> after >>= fun _ ->
+(* Demo function.*)
+let test_udp () =
+  bind_discovery (fun ip -> printf "Found peer at: %s\n" ip);
+  start_listening () |> ignore ;
+  Core.Std.sec 1. |> after >>= (fun _ ->
   send_broadcast broadcast_address >>| fun ok ->
-  if ok then print_endline "OK!" else print_endline "bad"
+  if ok then print_endline "OK!" else print_endline "bad") |> ignore;
+  Scheduler.go()
 
-let _ = Scheduler.go()
+(* Should be removed before submitting otherwise it will cause problems *)
+let _ = test_udp ()
