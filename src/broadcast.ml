@@ -1,17 +1,16 @@
 open Data
-open Keypersist
 open Core.Std
 open Async.Std
 
 let broadcast_string = "BROADCAST"
-let udp_port = 3110
-let exchange_port = 5999
+let udp_port = 31100
+let exchange_port = 59999
 let username = "amit" (* TODO replace with username specified in controller *)
 let my_key = {n="test"; e="fake"; d="bogus"} (* TODO: use (retrieve_user_key (load_keystore())) in Controller *)
 
 (* [get_broadcast_addresses] gets the computer's broadcast addresses. *)
-let get_broadcast_addresses () : string list =
-  ["10.148.127.255"] (* TODO replace with scraped output from ifconfig *)
+let get_broadcast_address () : string =
+  "10.148.127.255" (* TODO replace with scraped output from ifconfig *)
 
 (* [serialize_user_info] serializes a username and a key into a string. *)
 let serialize_user_info (username: string) (key : full_key) : string =
@@ -73,26 +72,26 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
 
 (* [send_broadcast] sends a broadcast and sets up a TCP server
     to listen for information sent from respondents to the broadcast. *)
-let send_broadcast (address : string) : unit Deferred.t =
+let rec send_broadcast (address : string) : unit Deferred.t =
   let broadcast_address =
     (Socket.Address.Inet.create (Unix.Inet_addr.of_string address) udp_port) in
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
   let buffer = Iobuf.of_string broadcast_string in
   let send_func = Or_error.ok_exn (Udp.sendto ()) in
-  print_endline "Sent.";
   try_with ~extract_exn:true
     (fun () -> send_func socket_fd buffer broadcast_address) >>=
       function
       | Ok () -> print_endline "Sent."; setup_exchange_server
       | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
         (Core.Std.Unix.error_message err))
-    >>= fun () -> return ()
+    >>= fun () -> send_broadcast address
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
   print_endline "Started listening.";
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
   Udp.recvfrom_loop socket_fd (fun message_buffer addr ->
+    print_endline "Got it.";
     let address = Socket.Address.Inet.to_string addr in
     let message = Iobuf.to_string message_buffer in
     if message = broadcast_string then
@@ -100,9 +99,7 @@ let listen_for_broadcast : unit Deferred.t =
     else ())
 
 let _ = after (Core.Std.sec 1.) >>=
-  fun _ -> (* listen_for_broadcast >>= fun _ -> *) let _ = List.map
-  (get_broadcast_addresses ())
-  (fun broadcast_addr -> send_broadcast broadcast_addr  >>| fun _ -> print_endline "Broadcast sent.") in return ()
+  (fun _ -> send_broadcast (get_broadcast_address())) >>= (fun _ -> listen_for_broadcast) >>= fun _ -> return ()
 
 
 let _ = Scheduler.go()
