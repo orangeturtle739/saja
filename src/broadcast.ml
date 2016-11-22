@@ -72,7 +72,7 @@ let setup_exchange_client (addr: string) : unit Deferred.t =
 
 (* [send_broadcast] sends a broadcast and sets up a TCP server
     to listen for information sent from respondents to the broadcast. *)
-let send_broadcast (address : string) : unit Deferred.t =
+let rec send_broadcast (address : string) : unit Deferred.t =
   let broadcast_address =
     (Socket.Address.Inet.create (Unix.Inet_addr.of_string address) udp_port) in
   let socket_fd = Unix.Socket.fd (Unix.Socket.(create Type.udp)) in
@@ -84,7 +84,7 @@ let send_broadcast (address : string) : unit Deferred.t =
       | Ok () -> print_endline "Sent."; setup_exchange_server
       | Error (Unix.Unix_error (err, _, _)) -> return (print_endline
         (Core.Std.Unix.error_message err))
-    >>= fun () -> return ()
+    >>= fun () -> send_broadcast address
 
 (* [listen_for_broadcast] listens for UDP broadcasts. *)
 let listen_for_broadcast : unit Deferred.t =
