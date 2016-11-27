@@ -32,7 +32,7 @@ let execute (command: action) (state: program_state) =
     | ExitSession session -> failwith "Unimplemented"
 
 let main keys =
-    let _ = listen () in
+    let _ = listen 12999 print_endline in
     let _ = Console.read_input () in
     ()
 
