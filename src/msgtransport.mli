@@ -9,7 +9,7 @@ open Data
 (* [send_msg ip ms pt] sends [ms] which is an encrypted message to the client
  * located at IP version 4 address [ip] through port [pt]. Returns true if the
  * action succeded else returns false. *)
-val send_msg: ip_address -> int -> encrypted_message -> bool Deferred.t
+val send_msg: ip_address -> int -> string -> bool Deferred.t
 
 (* [handle_msg ()] takes a function from an encrypted string (message
     received) to a unit and returns a unit. This binds the function passed in

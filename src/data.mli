@@ -38,7 +38,7 @@ type username = string
 (* A user *)
 type user = {
   username: username;
-  public_key: public_key;
+  public_key: public_key_pair;
 }
 
 (* They type of an IP address, to be changed to whatever the

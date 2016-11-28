@@ -11,7 +11,7 @@ let send_msg ip port msg =
 let listen port callback =
   let terminal = Tcp.on_port port in
   let _server  = Tcp.Server.create terminal
-      (fun _ r w -> Reader.contents r >>= fun contents ->
+      (fun _ r _ -> Reader.contents r >>= fun contents ->
         callback contents |> return) in ()
 
 let tcp_demo () =
@@ -23,4 +23,4 @@ let tcp_demo () =
   Scheduler.go ()
 
 (* Test code remove before submission *)
-let _ = tcp_demo ()
+(* let _ = tcp_demo () *)

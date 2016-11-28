@@ -11,4 +11,6 @@ amit:
 	corebuild -pkgs oUnit,async,yojson broadcast.byte
 tcp:
 	corebuild -pkgs core,async msgtransport.byte
+discovery:
+	corebuild -pkgs core,async,cryptokit,scrypt discovery.byte
 
