@@ -78,7 +78,14 @@ let test_discovery () =
   set_key u;
   bind_discovery (fun user -> printf "Found peer: %s\nAt: %s\n" (user_to_string user.user) user.ip_address);
   start_listening ();
+  print_endline "Started listening";
   Core.Std.sec 1. |> after >>= (fun _ ->
+      send_broadcast () >>| fun ok ->
+      if ok then print_endline "OK!" else print_endline "bad") |> ignore;
+  Core.Std.sec 2. |> after >>= (fun _ ->
+      send_broadcast () >>| fun ok ->
+      if ok then print_endline "OK!" else print_endline "bad") |> ignore;
+  Core.Std.sec 3. |> after >>= (fun _ ->
       send_broadcast () >>| fun ok ->
       if ok then print_endline "OK!" else print_endline "bad") |> ignore;
   Scheduler.go()

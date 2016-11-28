@@ -38,7 +38,7 @@ let main keys =
     ()
 
 let () =
-    ANSITerminal.(print_string [red]
-        "Welcome to GEM - Glueck Encrypted Messaging.\n");
+    print_system
+        "Welcome to GEM - Glueck Encrypted Messaging.\n";
     let keys = Keypersist.load_keystore () in
     main keys
