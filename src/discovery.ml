@@ -25,7 +25,7 @@ let user_to_string user =
 let string_to_user str =
   let parts =
     Str.split ( "\n" |> Str.regexp_string) str |>
-    List.map (fun str -> try Cryptokit.transform_string (Cryptokit.Base64.decode ()) str with _ -> print_endline "yelp"; "FOOBAR") in
+    List.map (fun str -> Cryptokit.transform_string (Cryptokit.Base64.decode ()) str) in
   match parts with
   | name::en::ee::sn::se::[] -> Some {
       username = name;
@@ -47,7 +47,7 @@ let tcp_key_transmit ip_address = match !current_user with
                  Msgtransport.send_msg ip_address tcp_port |> ignore
   | None -> ()
 
-let tcp_key_receive str = print_endline str; match string_to_user str with
+let tcp_key_receive str = match string_to_user str with
   | Some user -> !discovery_callback user
   | None -> ()
 
