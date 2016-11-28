@@ -7,5 +7,7 @@ open Async.Std
  * returns the string. *)
 val read_input: unit -> message Deferred.t
 
-(* [print_to_console message] prints a message to the console. *)
-val print_to_console: message -> unit
+(* [print_message message] prints a message to the console. *)
+val print_message: message -> unit
+
+val print_error: string -> unit
