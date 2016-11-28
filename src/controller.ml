@@ -6,7 +6,7 @@ open Async.Std
 (* [action] represents an action taken. *)
 type action =
   | Discover
-  | StartSession of online_user list
+  | StartSession of (username list)
   | QuitProgram
   | Help
   | SendMessage of (session_id * message)
@@ -22,7 +22,7 @@ type program_state = {
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
-let execute (command: action) (state: program_state) =
+let execute (command: action) (state: program_state) : program_state Deferred.t =
     match command with
     | Discover -> failwith "AMIT"
     | StartSession user_lst -> failwith "???"
@@ -32,10 +32,11 @@ let execute (command: action) (state: program_state) =
     | GetInfo session -> failwith "Unimplemented"
     | ExitSession session -> failwith "Unimplemented"
 
-let main keys =
+let rec main program_state =
   let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
-    let _ = Console.read_input () in
-    ()
+    Console.read_input () >>= fun s ->
+      execute (action_of_string s) >>= fun new_state ->
+        main new_state
 
 let () =
     print_system
