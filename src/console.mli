@@ -11,3 +11,5 @@ val read_input: unit -> message Deferred.t
 val print_message: message -> unit
 
 val print_error: string -> unit
+
+val print_system : string -> unit
