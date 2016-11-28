@@ -11,11 +11,13 @@ let send_msg ip port msg =
 let listen port callback =
   let terminal = Tcp.on_port port in
   let _server  = Tcp.Server.create terminal
-      (fun _ r _ -> Reader.contents r >>= fun contents ->
-        callback contents |> return) in ()
+      (fun address r _ -> Reader.contents r >>= fun contents ->
+        let str_addr = Socket.Address.Inet.addr address |>
+                      Unix.Inet_addr.to_string in
+        callback str_addr contents |> return) in ()
 
 let tcp_demo () =
-  listen 3654 (fun str -> printf "Received: %s" str);
+  listen 3654 (fun addr str -> printf "Received: %s\nFound: %s" str addr);
   let _ = after (Core.Std.sec 1.) >>= fun _ ->
     send_msg "localhost" 3654
       "556688 Crpytic Message from Jacob Glueck!" >>| (fun suc ->

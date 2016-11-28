@@ -14,4 +14,4 @@ val send_msg: ip_address -> int -> string -> bool Deferred.t
 (* [handle_msg ()] takes a function from an encrypted string (message
     received) to a unit and returns a unit. This binds the function passed in
     as a callback whenever a message is received. *)
-val listen: int -> (string -> unit) -> unit
+val listen: int -> (string -> string -> unit) -> unit

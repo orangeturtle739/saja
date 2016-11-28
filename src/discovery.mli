@@ -11,7 +11,7 @@ val set_key: user -> unit
 
 (* [bind_discovery func] takes a function from user to unit to be called
  * whenever a peer is discovered. *)
-val bind_discovery: (user -> unit) -> unit
+val bind_discovery: (online_user -> unit) -> unit
 
 (* Makes the discovery module start listening and responding to incoming
  * broadcasts *)
