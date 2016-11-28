@@ -20,18 +20,12 @@ let user_to_string user =
     user.public_key.signing_key.e;
   ] |>
   List.map (Cryptokit.transform_string (Cryptokit.Base64.encode_compact ())) |>
-  (fun foo -> print_endline "User to string"; foo) |>
-  List.map (fun str -> print_endline str; str) |>
-  (fun foo -> print_endline "End user to string"; foo) |>
   String.concat "\n"
 
 let string_to_user str =
   let parts =
     Str.split ( "\n" |> Str.regexp_string) str |>
-    (fun foo -> print_endline "String to user"; foo) |>
-    List.map (fun str -> print_endline str; str) |>
-    (fun foo -> print_endline "End string to user"; foo) |>
-    List.map (Cryptokit.transform_string (Cryptokit.Base64.decode ())) in
+    List.map (fun str -> try Cryptokit.transform_string (Cryptokit.Base64.decode ()) str with _ -> print_endline "yelp"; "FOOBAR") in
   match parts with
   | name::en::ee::sn::se::[] -> Some {
       username = name;
