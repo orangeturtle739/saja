@@ -1,29 +1,26 @@
 open Async.Std
 open Data
 
-(* ================================================================= *)
-
-let relay_packets ibuf r w callback=
-  Reader.read r ibuf
-  >>= function
-  | `Eof        -> return ()
-  | `Ok str_len ->
-    Writer.write w ibuf ~len:str_len;
-    callback (String.sub ibuf 0 str_len);
-    Writer.flushed w
-
 let send_msg ip port msg =
   try
-    Tcp.connect (Tcp.to_host_and_port ip port) >>=
-    fun (_,_,w) -> Writer.write w msg;
-    Writer.flushed w >>= fun () -> return true
+    Tcp.connect (Tcp.to_host_and_port ip port) >>= fun (_,_,w) ->
+    Writer.write w msg;
+    Writer.close w >>= fun () -> return true
   with _ -> return false
 
 let listen port callback =
-  print_endline "Welcome";
   let terminal = Tcp.on_port port in
   let _server  = Tcp.Server.create terminal
-  (fun _ r w -> let ibuf = String.make 5120 '.' in
-   relay_packets ibuf r w callback) in ()
+      (fun _ r w -> Reader.contents r >>= fun contents ->
+        callback contents |> return) in ()
 
-(* send_msg "localhost" 12999 "556688 Crpytic Message from Jacob Glueck!"*)
+let tcp_demo () =
+  listen 3654 (fun str -> printf "Received: %s" str);
+  let _ = after (Core.Std.sec 1.) >>= fun _ ->
+    send_msg "localhost" 3654
+      "556688 Crpytic Message from Jacob Glueck!" >>| (fun suc ->
+        if suc then print_endline "Sent" else print_endline "Error sending") in
+  Scheduler.go ()
+
+(* Test code remove before submission *)
+let _ = tcp_demo ()
