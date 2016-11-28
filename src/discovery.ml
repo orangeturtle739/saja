@@ -47,8 +47,11 @@ let tcp_key_transmit ip_address = match !current_user with
                  Msgtransport.send_msg ip_address tcp_port |> ignore
   | None -> ()
 
-let tcp_key_receive str = match string_to_user str with
-  | Some user -> !discovery_callback user
+let tcp_key_receive addr str = match string_to_user str with
+  | Some user -> !discovery_callback {
+      user = user;
+      ip_address = addr;
+    }
   | None -> ()
 
 let start_listening () =
@@ -73,7 +76,7 @@ let test_discovery () =
     }
   } in
   set_key u;
-  bind_discovery (fun user -> printf "Found peer: %s\n" (user_to_string user));
+  bind_discovery (fun user -> printf "Found peer: %s\nAt: %s\n" (user_to_string user.user) user.ip_address);
   start_listening ();
   Core.Std.sec 1. |> after >>= (fun _ ->
       send_broadcast () >>| fun ok ->

@@ -1,6 +1,7 @@
 open Data
 open Msgtransport
 open Console
+open Async.Std
 
 (* [action] represents an action taken. *)
 type action =
@@ -32,7 +33,7 @@ let execute (command: action) (state: program_state) =
     | ExitSession session -> failwith "Unimplemented"
 
 let main keys =
-    let _ = listen 12999 print_endline in
+  let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
     let _ = Console.read_input () in
     ()
 
