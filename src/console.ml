@@ -9,7 +9,7 @@ let read_input () : string Deferred.t =
   | `Eof -> failwith "Uh-oh!"
 
 let print_message : ('a, unit, string, unit) format4 -> 'a =
-  printf
+  printf "\x1b[0"; printf
 
 let print_error : ('a, unit, string, unit) format4 -> 'a =
   printf "\x1b[0;31"; printf
