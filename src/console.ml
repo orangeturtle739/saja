@@ -16,3 +16,5 @@ let print_error (error : string) : unit =
 
 let print_system (msg : string) : unit =
   ANSITerminal.(print_string [yellow] msg)
+
+let read_yes_no () = failwith "foo"
