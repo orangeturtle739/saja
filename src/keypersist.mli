@@ -28,6 +28,14 @@ val write_username: username -> t -> t
  * [key] and username [user]. *)
 val write_user_key: full_key_pair -> t -> t
 
+(* [user_stored user store] is [true] if [user] is stored in
+ * the [store]. *)
+val user_stored: username -> t -> bool
+
+(* [retrieve_key user store] is an the public key pair of [user] in
+ * [store]. *)
+val retrieve_key: username -> t -> public_key_pair
+
 (* [retrieve_keys store] is an association list containing all known
  * verified username-public key pairs in [store]. *)
 val retrieve_keys: t -> (username * public_key_pair) list

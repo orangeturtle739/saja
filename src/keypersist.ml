@@ -134,6 +134,19 @@ let write_user_key (key: full_key_pair) (store: t) =
         {store with user_key = key} 
     in save_keystore new_store; new_store
 
+(* [user_stored user store] is [true] if [user] is stored in
+ * the [store]. *)
+let user_stored (user: username) (store: t) =
+    Store.mem user store.outside_keys
+
+(* [retrieve_key user store] is an the public key pair of [user] in
+ * [store]. *)
+let retrieve_key (user: username) (store: t) =
+    try
+        Store.find user store.outside_keys
+    with
+        Not_found -> failwith "No key stored for user"
+
 (* [retrieve_keys store] is an association list containing all known
  * verified username-public key pairs in [store]. *)
 let retrieve_keys (store: t) =
