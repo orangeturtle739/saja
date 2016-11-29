@@ -6,6 +6,9 @@ open Async.Std
  * returns: true if the broadcast was successfull, false otherwise *)
 val send_broadcast: unit -> bool Deferred.t
 
+(* sends the current key to the specified IP address *)
+val tcp_key_transmit: ip_address -> bool Deferred.t
+
 (* [set_key user] sets the user info to be sent out to the specified user info*)
 val set_key: user -> unit
 

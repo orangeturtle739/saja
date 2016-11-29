@@ -7,6 +7,11 @@ open Async.Std
  * returns the string. *)
 val read_input: unit -> message Deferred.t
 
+(* Effect: reads a one of [y, yes] and returns true, or
+ * [n, no] and returns false. Keeps asking the user for input until the input
+ * is one of the above values. *)
+val read_yes_no: unit -> bool Deferred.t
+
 (* [print_message message] prints a message to the console. *)
 val print_message: message -> unit
 
