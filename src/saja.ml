@@ -2,10 +2,16 @@ open Data
 open Msgtransport
 open Console
 open Async.Std
+open Keypersist
 
 let null_key = {
   full_signing_key={n="0";e="0";d="0"};
   full_encryption_key={n="0";e="0";d="0"}
+}
+
+type chat_state = {
+  online_users: (session_id * online_user) list;
+  messages: (username * message) list
 }
 
 (* [action] represents an action taken. *)
@@ -21,7 +27,8 @@ type action =
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
 type program_state = {
-    keys: Keypersist.t;
+    mutable keys: Keypersist.t;
+    mutable user_ips: (username * ip_address) list;
     username: username
 }
 
@@ -29,7 +36,12 @@ type program_state = {
    a new program state with the action executed. *)
 let execute (command: action) (state: program_state) : program_state Deferred.t =
     match command with
-    | Discover -> failwith "Foo"
+    | Discover -> Discovery.bind_discovery
+      (fun {user={username;public_key}; ip_address} -> 
+        state.keys <- write_key username public_key state.keys;
+        state.user_ips <- List.remove_assoc username state.user_ips;
+        state.user_ips <- (username, ip_address)::state.user_ips);
+      return state
     | StartSession user_lst -> failwith "???"
     | QuitProgram -> Async.Std.exit(0)
     | Help -> print_endline "Help is for the weak."; return state
@@ -69,5 +81,20 @@ let _ =
         print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
         Keypersist.write_username new_user keys)
       else keys in
-    let _ = main {keys=keys; username="amit"} in
+    Discovery.start_listening ();
+    let user_key = Keypersist.retrieve_user_key keys in
+    Discovery.set_key {
+      username = Keypersist.retrieve_username keys;
+      public_key = {
+        encryption_key = {
+          n = user_key.full_encryption_key.n;
+          e = user_key.full_encryption_key.e
+        };
+        signing_key = {
+          n = user_key.full_signing_key.n;
+          e = user_key.full_signing_key.e
+        }
+      }
+    };
+    let _ = main {keys=keys; username="amit"; user_ips = []} in
     Scheduler.go()

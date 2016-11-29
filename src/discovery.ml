@@ -91,4 +91,4 @@ let test_discovery () =
   Scheduler.go()
 
 (* Should be removed before submitting otherwise it will cause problems *)
-let _ = test_discovery ()
+(*let _ = test_discovery ()*)
