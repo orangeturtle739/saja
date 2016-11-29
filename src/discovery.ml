@@ -44,8 +44,8 @@ let string_to_user str =
 
 let tcp_key_transmit ip_address = match !current_user with
   | Some user -> user_to_string user |>
-                 Msgtransport.send_msg ip_address tcp_port |> ignore
-  | None -> ()
+                 Msgtransport.send_msg ip_address tcp_port
+  | None -> return true
 
 let tcp_key_receive addr str = match string_to_user str with
   | Some user -> !discovery_callback {
@@ -55,7 +55,7 @@ let tcp_key_receive addr str = match string_to_user str with
   | None -> ()
 
 let start_listening () =
-  Broadcast.bind_discovery tcp_key_transmit;
+  Broadcast.bind_discovery (fun ip -> tcp_key_transmit ip |> ignore);
   Broadcast.start_listening ();
   Msgtransport.listen tcp_port tcp_key_receive
 
