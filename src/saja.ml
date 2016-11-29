@@ -38,24 +38,24 @@ let handle_discovery state =
     (fun online_user -> found := online_user::(!found));
   let add_user {user={username;public_key}; ip_address} state =
     let ok = if Keypersist.verify_key username public_key state.keys then
-        (printf "Discovered @%s at %s" username ip_address; return true) else
-      if Keypersist.retrieve_keys state.keys |> List.mem_assoc username then
-        (printf "*******************************";
-         printf "Warning! There is something fishy about the key for @%s" username;
-         printf "The key stored in your keychain has a different fingerprint than";
-         printf "the key received:";
-         printf "Keychain: %s"
-           (Crypto.fingerprint (Keypersist.retrieve_keys state.keys |> List.assoc username));
-         printf "Received: %s"
+        (printf "Discovered @%s at %s\n" username ip_address; return true) else
+      if Keypersist.user_stored username state.keys then
+        (printf "*******************************\n";
+         printf "Warning! There is something fishy about the key for @%s\n" username;
+         printf "The key stored in your keychain has a different fingerprint than\n";
+         printf "the key received:\n";
+         printf "Keychain: %s\n"
+           (Keypersist.retrieve_key username state.keys |> Crypto.fingerprint);
+         printf "Received: %s\n"
            (Crypto.fingerprint public_key);
-         printf "Would you like to reject the received key? [y/n]";
+         printf "Would you like to reject the received key? [y/n]\n";
          read_yes_no () >>| not) else
         (printf "*******************************";
-         printf "Warning! There is no key in your keychain for @%s" username;
-         printf "Fingerprint: %s"
+         printf "Warning! There is no key in your keychain for @%s\n" username;
+         printf "Fingerprint: %s\n"
            (Crypto.fingerprint public_key);
-         printf "You should verify the fingerprint in person before accepting this key";
-         printf "Would you like to accept the received key? [y/n]";
+         printf "You should verify the fingerprint in person before accepting this key\n";
+         printf "Would you like to accept the received key? [y/n]\n";
          read_yes_no ()) in
     ok >>| (fun really_ok ->
         if not really_ok then state else
