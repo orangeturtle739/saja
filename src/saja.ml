@@ -59,9 +59,13 @@ let handle_discovery state =
          read_yes_no ()) in
     ok >>| (fun really_ok ->
         if not really_ok then state else
-          let state = {state with keys = write_key username public_key state.keys} in
-          let state = {state with user_ips = (username, ip_address)::(List.remove_assoc username state.user_ips)} in
-          state ) in
+          {
+            state with
+            user_ips = (username, ip_address)::
+                       (List.remove_assoc username state.user_ips);
+            keys = write_key username public_key state.keys
+          }
+      ) in
   let rec process_users state = match !found with
     | [] -> return state
     | h::t -> found := t; add_user h state >>= process_users in
