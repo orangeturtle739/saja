@@ -166,6 +166,7 @@ let try_decrypt public_key private_key data =
   (* This happens if the message is too short and a substring fails. In that
    * case, it is not valid. *)
   | Invalid_argument _ -> None
+  | Cryptokit.Error _ -> None
 
 (* Tries to verify the signature of the message with each public key.
  * If there is a public key which produces a valid signature, returns
