@@ -153,6 +153,15 @@ let retrieve_key (user: username) (store: t) =
 let retrieve_keys (store: t) =
   Store.bindings store.outside_keys
 
+(* [retrieve_user key store] is the username corresponding to public [key]
+ * pair in [store]. *)
+let retrieve_user (key: public_key_pair) (store: t) =
+    try
+      let (users, keys) = List.split (retrieve_keys store) in
+      List.combine keys users |> List.assoc key
+    with
+      Not_found -> failwith "No user stored for key"
+
 (* [retrieve_username store] is the username of the user stored in the
  * key store. *)
 let retrieve_username (store: t) =
