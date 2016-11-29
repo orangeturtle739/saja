@@ -37,8 +37,6 @@ let handle_discovery state =
   Discovery.bind_discovery
     (fun online_user -> found := online_user::(!found));
   let add_user {user={username;public_key}; ip_address} state =
-    print_endline username;
-    print_endline ip_address;
     let ok = if Keypersist.verify_key username public_key state.keys then
         (printf "Discovered @%s at %s\n" username ip_address; return true) else
       if Keypersist.user_stored username state.keys then
