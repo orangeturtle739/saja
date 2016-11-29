@@ -13,4 +13,5 @@ tcp:
 	corebuild -pkgs core,async msgtransport.byte
 discovery:
 	corebuild -pkgs core,async,cryptokit,scrypt discovery.byte
-
+logo:
+	./logo.sh
