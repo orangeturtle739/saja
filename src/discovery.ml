@@ -24,8 +24,11 @@ let user_to_string user =
 
 let string_to_user str =
   let parts =
-    Str.split ( "\n" |> Str.regexp_string) str |>
-    List.map (fun str -> Cryptokit.transform_string (Cryptokit.Base64.decode ()) str) in
+    try
+      Str.split ( "\n" |> Str.regexp_string) str |>
+      List.map (fun str -> Cryptokit.transform_string (Cryptokit.Base64.decode ()) str)
+    with
+      Cryptokit.Error _ -> [] in
   match parts with
   | name::en::ee::sn::se::[] -> Some {
       username = name;
