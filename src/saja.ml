@@ -3,6 +3,11 @@ open Msgtransport
 open Console
 open Async.Std
 
+let null_key = {
+  full_signing_key={n="0";e="0";d="0"};
+  full_encryption_key={n="0";e="0";d="0"}
+}
+
 (* [action] represents an action taken. *)
 type action =
   | Discover
@@ -54,5 +59,15 @@ let _ =
       Logo.program_name;
   let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
     let keys = Keypersist.load_keystore () in
+    let keys = if Keypersist.retrieve_user_key keys = null_key then
+      (print_endline "Generating a fresh key pair."; 
+      let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
+      else keys in
+    let keys = if Keypersist.retrieve_username keys = "" then
+      (print_endline "What's your name, partner?";
+      let new_user = "Billy" in 
+        print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
+        Keypersist.write_username new_user keys)
+      else keys in
     let _ = main {keys=keys; username="amit"} in
     Scheduler.go()

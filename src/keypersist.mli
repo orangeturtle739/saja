@@ -32,6 +32,10 @@ val write_user_key: full_key_pair -> t -> t
  * verified username-public key pairs in [store]. *)
 val retrieve_keys: t -> (username * public_key_pair) list
 
+(* [retrieve_username] is the username of the user stored in the
+ * key store. *)
+val retrieve_username: t -> username
+
 (* [retrieve_user_key store] is the full key of the user stored in the
  * key store. *)
 val retrieve_user_key: t -> full_key_pair

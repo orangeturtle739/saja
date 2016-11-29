@@ -139,6 +139,11 @@ let write_user_key (key: full_key_pair) (store: t) =
 let retrieve_keys (store: t) =
     Store.bindings store.outside_keys
 
+(* [retrieve_username store] is the username of the user stored in the
+ * key store. *)
+let retrieve_username (store: t) =
+    store.user
+
 (* [retrieve_user_key store] is the full key of the user stored in the
  * key store. *)
 let retrieve_user_key (store: t) =
