@@ -15,3 +15,5 @@ discovery:
 	corebuild -pkgs core,async,cryptokit,scrypt discovery.byte
 logo:
 	./logo.sh
+format:
+	find . -name '*.ml' ! -name 'logo.ml' -exec ocp-indent -i {} \; -o -name '*.mli' -exec ocp-indent -i {} \;
