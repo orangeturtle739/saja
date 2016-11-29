@@ -27,21 +27,29 @@ type action =
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
 type program_state = {
-    mutable keys: Keypersist.t;
-    mutable user_ips: (username * ip_address) list;
+    keys: Keypersist.t;
+    user_ips: (username * ip_address) list;
     username: username
 }
 
-(* [execute] takes an action and a program state and returns
+let handle_discovery state =
+  let found = ref [] in
+  Discovery.bind_discovery
+    (fun online_user -> found := online_user::(!found));
+  let add_user {user={username;public_key}; ip_address} state =
+    let state = {state with keys = write_key username public_key state.keys} in
+    let state = {state with user_ips = (username, ip_address)::(List.remove_assoc username state.user_ips)} in
+    return state in
+  let rec process_users state = match !found with
+    | [] -> return state
+    | h::t -> found := t; add_user h state >>= process_users in
+  process_users state
+
+    (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
 let execute (command: action) (state: program_state) : program_state Deferred.t =
     match command with
-    | Discover -> Discovery.bind_discovery
-      (fun {user={username;public_key}; ip_address} -> 
-        state.keys <- write_key username public_key state.keys;
-        state.user_ips <- List.remove_assoc username state.user_ips;
-        state.user_ips <- (username, ip_address)::state.user_ips);
-      return state
+      | Discover -> handle_discovery state
     | StartSession user_lst -> failwith "???"
     | QuitProgram -> Async.Std.exit(0)
     | Help -> print_endline "Help is for the weak."; return state
@@ -72,12 +80,12 @@ let _ =
   let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
     let keys = Keypersist.load_keystore () in
     let keys = if Keypersist.retrieve_user_key keys = null_key then
-      (print_endline "Generating a fresh key pair."; 
+      (print_endline "Generating a fresh key pair.";
       let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
       else keys in
     let keys = if Keypersist.retrieve_username keys = "" then
       (print_endline "What's your name, partner?";
-      let new_user = "Billy" in 
+      let new_user = "Billy" in
         print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
         Keypersist.write_username new_user keys)
       else keys in
