@@ -150,4 +150,6 @@ let _ =
         }
       };
       return keys) >>| (fun keys -> main {keys=keys; username="amit"; user_ips = []}) in
+      let _ = Signal.handle [Signal.of_string "sigint"] 
+              (fun _ -> printf "\nBye!\n"; ignore (Async.Std.exit(0));) in
       let _ = Scheduler.go() in ()
