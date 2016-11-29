@@ -81,8 +81,21 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   match command with
   | Discover -> handle_discovery state
   | StartSession user_lst -> failwith "???"
-  | QuitProgram -> Async.Std.exit(0)
-  | Help -> print_endline "Help is for the weak."; return state
+  | QuitProgram -> print_endline ">>|"; Async.Std.exit(0)
+  | Help -> print_endline ("---------------\n"^
+      "Saja (adj) - Wise, sensible. [Ido language]\n"^
+      "SAJA is an encrypted, peer-to-peer messaging system.\n"^
+      "It was developed by four Cornell University students for a computer science course project.\n\n"^
+      "COMMANDS:\n"^
+      ":help -> Displays help/about window.\n"^
+      ":quit -> Exits the program.\n"^
+      ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
+      ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
+      ":info -> Gets information about the current session."^
+      ":exitsession -> Exits the messaging session (but not the program). \n\n"^
+      "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it."
+    );
+      return state
   | SendMessage msg -> failwith "Unimplemented"
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
@@ -99,6 +112,7 @@ let action_of_string (s: string) : action =
   | _ -> SendMessage s
 
 let rec main program_state =
+  printf ">>= ";
   Console.read_input () >>= fun s ->
   execute (action_of_string s) program_state >>= fun new_state ->
   main new_state
