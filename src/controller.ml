@@ -6,7 +6,7 @@ open Async.Std
 (* [action] represents an action taken. *)
 type action =
   | Discover
-  | StartSession of username list
+  | StartSession of (username list)
   | QuitProgram
   | Help
   | SendMessage of (session_id * message)
@@ -32,18 +32,16 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
     | GetInfo session -> failwith "Unimplemented"
     | ExitSession session -> failwith "Unimplemented"
 
-let action_of_string foo : action = failwith "AMIT"
+let action_of_string (s : string) :
 
-let rec main pstate : program_state Deferred.t =
+let rec main program_state =
   let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
     Console.read_input () >>= fun s ->
-    execute (action_of_string s) pstate  >>= fun new_state ->
+      execute (action_of_string s) >>= fun new_state ->
         main new_state
 
-let _ =
+let () =
     print_system
-        "Welcome to GEM - Glueck Encrypted Messaging.\n";
+        Logo.program_name;
     let keys = Keypersist.load_keystore () in
-    main {keys=keys; username="amit"} >>= fun _ ->  Async.Std.exit(0)
-
-let _ = Scheduler.go ()
+    main keys
