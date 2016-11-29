@@ -13,7 +13,7 @@ let listen port callback =
   let _server  = Tcp.Server.create terminal
       (fun address r _ -> Reader.contents r >>= fun contents ->
         let str_addr = Socket.Address.Inet.addr address |>
-                      Unix.Inet_addr.to_string in
+                       Unix.Inet_addr.to_string in
         callback str_addr contents |> return) in ()
 
 let tcp_demo () =

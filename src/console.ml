@@ -4,7 +4,7 @@ let stdin : Async.Std.Reader.t = Lazy.force Async.Std.Reader.stdin
 
 let read_input () : string Async.Std.Deferred.t =
   Async.Std.(
-  Reader.read_line stdin >>= function
+    Reader.read_line stdin >>= function
     | `Ok s -> return s
     | `Eof -> failwith "Uh-oh!")
 
