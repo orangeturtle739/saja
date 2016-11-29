@@ -104,9 +104,10 @@ let rec main program_state =
   main new_state
 
 let _ =
-  print_endline "Welcome to";
   print_endline
     Logo.program_name;
+  print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.";
+  print_system "You new around here? Type :help for help.";
   let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
   let keys = Keypersist.load_keystore () in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
@@ -114,7 +115,7 @@ let _ =
        let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
     else keys in
   let keys = if Keypersist.retrieve_username keys = "" then
-      (print_endline "What's your name, partner?";
+      (print_endline "Messaging is more fun when people know your name. What's your name?";
        let new_user = "Billy" in
        print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
        Keypersist.write_username new_user keys)
