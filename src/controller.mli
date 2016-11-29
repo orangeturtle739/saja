@@ -1,9 +1,10 @@
 open Data
+open Async.Std
 
 (* [action] represents an action taken. *)
 type action =
   | Discover
-  | StartSession of online_user list
+  | StartSession of username list
   | QuitProgram
   | Help
   | SendMessage of (session_id * message)
@@ -16,4 +17,4 @@ type program_state
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
-val execute: action -> program_state -> program_state
+val execute: action -> program_state -> program_state Deferred.t
