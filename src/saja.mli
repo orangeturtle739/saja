@@ -7,9 +7,9 @@ type action =
   | StartSession of username list
   | QuitProgram
   | Help
-  | SendMessage of (session_id * message)
-  | GetInfo of session_id
-  | ExitSession of session_id
+  | SendMessage of message
+  | GetInfo
+  | ExitSession
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
