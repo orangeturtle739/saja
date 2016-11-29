@@ -36,6 +36,10 @@ val user_stored: username -> t -> bool
  * [store]. *)
 val retrieve_key: username -> t -> public_key_pair
 
+(* [retrieve_user key store] is the username corresponding to public [key]
+ * pair in [store]. *)
+val retrieve_user: public_key_pair -> t -> username
+
 (* [retrieve_keys store] is an association list containing all known
  * verified username-public key pairs in [store]. *)
 val retrieve_keys: t -> (username * public_key_pair) list
