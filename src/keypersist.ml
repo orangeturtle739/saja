@@ -73,7 +73,8 @@ let load_keystore () =
     let public_keys = List.fold_left (fun s (user, key) ->
         Store.add user key s)
         Store.empty public_key_list in
-    let user = j |> Util.member "user" |> to_string in
+    let user = j |> Util.member "user" |> to_string |> 
+               Str.global_replace (Str.regexp "\"") "" in
     let user_key = j |> Util.member "user_key" in
     let user_key_info = Util.({
         full_signing_key = {
