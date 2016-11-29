@@ -13,8 +13,8 @@ val read_input: unit -> message Deferred.t
 val read_yes_no: unit -> bool Deferred.t
 
 (* [print_message message] prints a message to the console. *)
-val print_message: message -> unit
+val print_message: ('a, unit, string, unit) format4 -> 'a
 
-val print_error: string -> unit
+val print_error: ('a, unit, string, unit) format4 -> 'a
 
-val print_system : string -> unit
+val print_system : ('a, unit, string, unit) format4 -> 'a 

@@ -1,23 +1,23 @@
+open Async.Std
 open Data
 
-let stdin : Async.Std.Reader.t = Lazy.force Async.Std.Reader.stdin
+let stdin : Reader.t = Lazy.force Reader.stdin
 
-let read_input () : string Async.Std.Deferred.t =
-  Async.Std.(
-    Reader.read_line stdin >>= function
-    | `Ok s -> return s
-    | `Eof -> failwith "Uh-oh!")
+let read_input () : string Deferred.t =
+  Reader.read_line stdin >>= function
+  | `Ok s -> return s
+  | `Eof -> failwith "Uh-oh!"
 
-let print_message (message : message) : unit =
-  ANSITerminal.(print_string [white] message)
+let print_message : ('a, unit, string, unit) format4 -> 'a =
+  printf
 
-let print_error (error : string) : unit =
-  ANSITerminal.(print_string [red] error)
+let print_error : ('a, unit, string, unit) format4 -> 'a =
+  printf "\x1b[0;31"; printf
 
-let print_system (msg : string) : unit =
-  ANSITerminal.(print_string [yellow] msg)
+let print_system : ('a, unit, string, unit) format4 -> 'a =
+  printf "\x1b[1;33"; printf
 
-let rec read_yes_no () : bool Async.Std.Deferred.t =
+let rec read_yes_no () : bool Deferred.t =
 
   let yes = function
     | "y" | "yes" -> true
@@ -29,10 +29,9 @@ let rec read_yes_no () : bool Async.Std.Deferred.t =
     | _ -> false
   in
 
-  Async.Std.(
-    Reader.read_line stdin >>= function
-      | `Ok s -> let lower = String.lowercase_ascii s in
-          if yes lower then return true
-          else if no lower then return false
-          else read_yes_no()
-      | `Eof -> failwith "Uh-oh!")
+  Reader.read_line stdin >>= function
+    | `Ok s -> let lower = String.lowercase_ascii s in
+        if yes lower then return true
+        else if no lower then return false
+        else read_yes_no()
+    | `Eof -> failwith "Uh-oh!"
