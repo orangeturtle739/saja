@@ -300,6 +300,8 @@ let handle_received_message state addr str =
   match parse_message state decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state origin_user session_id body
+  | Some (session_id, msg_type, body) when msg_type = msg_str ->
+    process_msg_messsage state session_id origin_user body
   | _ -> return state
 
 let handle_received_message_ignore state addr str =
@@ -392,7 +394,7 @@ let _ =
              let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
              printf_system "%s" okay_message;
              return (Keypersist.write_username new_user keys)))
-      else (return keys)) >>= 
+      else (return keys)) >>=
     (fun keys ->
        Discovery.start_listening ();
        let user_key = Keypersist.retrieve_user_key keys in
