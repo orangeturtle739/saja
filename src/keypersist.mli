@@ -4,9 +4,9 @@ open Data
 (* The type of a key store. *)
 type t
 
-(* [load_keystore] returns the currently written rendition of the key store
- * from file. *)
-val load_keystore: unit -> t
+(* [load_keystore pass] returns the currently written rendition 
+ * of the key store from file decrypted with pass. *)
+val load_keystore: string -> t
 
 (* [save_keystore store] saves the key store [store] to file. *)
 val save_keystore: t -> unit

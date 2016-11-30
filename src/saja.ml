@@ -258,7 +258,7 @@ let _ =
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
   let _ = listen chat_port handle_incoming_message in
-  let keys = Keypersist.load_keystore () in
+  let keys = Keypersist.load_keystore "password" in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
       (print_system "Generating a fresh key pair.";
        let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
