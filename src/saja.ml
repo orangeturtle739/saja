@@ -177,16 +177,11 @@ let start_session state username_list =
     send_group_message new_state init_str init_msg
   | None -> return state
 
-let message_buf_tail = Ivar.create () |> ref
-let message_buf =
-  let queue = Queue.create () in
-  Queue.add (Ivar.read !message_buf_tail) queue; queue
+let message_buf = Bqueue.create ()
 
 let handle_incoming_message addr str =
   printf_system "Received: %s\nFound: %s" str addr;
-  Ivar.fill !message_buf_tail (addr, str);
-  message_buf_tail := Ivar.create ();
-  Queue.add (Ivar.read !message_buf_tail) message_buf
+  Bqueue.add (addr, str) message_buf
 
 let resolve_init_body state body =
   let split = Str.split (Str.regexp "\n") body |>
@@ -251,7 +246,7 @@ let handle_received_message state addr str =
 let receive_messages state : program_state Deferred.t =
   choose
     [
-      choice (Queue.peek message_buf) (fun (addr, str) ->
+      choice (Bqueue.take message_buf) (fun (addr, str) ->
           `ReadMsg (addr, str));
       choice (Console.read_input ()) (fun str ->
           `ReadConsole str)
