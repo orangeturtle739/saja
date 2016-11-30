@@ -8,7 +8,8 @@ module Store = Map.Make(String)
 type t = {
   outside_keys: public_key_pair Store.t;
   user: username;
-  user_key: full_key_pair
+  user_key: full_key_pair;
+  password: string
 }
 
 (* The name of the file where key data is stored. *)
@@ -66,13 +67,13 @@ let save_keystore (store: t) =
         ]
       )
     ]
-  in write_file keyfile j
+  in write_file keyfile j store.password
 
-(* [load_keystore] returns the currently written rendition of the key store
- * from file. *)
-let load_keystore () =
+(* [load_keystore pass] returns the currently written rendition of the key store
+ * from file decrypted with [pass]. *)
+let load_keystore (password: string) =
   try
-    let j = read_file keyfile in
+    let j = read_file keyfile password in
     let public_key_list = Util.(j |> member "public" |> to_assoc) |>
                           List.map key_from_json in
     let public_keys = List.fold_left (fun s (user, key) ->
@@ -95,7 +96,8 @@ let load_keystore () =
     in {
       outside_keys = public_keys;
       user = user;
-      user_key = user_key_info
+      user_key = user_key_info;
+      password = password
     }
   with
     Sys_error _ -> let empty_store = {
@@ -104,7 +106,8 @@ let load_keystore () =
       user_key = {
         full_signing_key = {n = "0"; e = "0"; d = "0"};
         full_encryption_key = {n = "0"; e = "0"; d = "0"}
-      }
+      };
+      password = password
     } in
     save_keystore empty_store;
     empty_store
