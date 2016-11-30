@@ -250,6 +250,7 @@ let decrypt_message state str =
   let signing_key_to_username_map = List.combine public_signing_keys
       (List.split public_key_map |> fst) in
   let username = List.assoc signing_key signing_key_to_username_map in
+  printf_system "Received: %s\nFrom: %s" decrypted username;
   (username, decrypted)
 
 let handle_received_message state addr str =
@@ -272,6 +273,12 @@ let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
   | Some thing -> thing
   | None -> return state
+
+let handle_send_message state msg =
+  if state.current_chat <> None then (
+    print_system "Can't send message because you are not in a chat.";
+    return state) else
+    send_group_message state msg_str msg
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -296,7 +303,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
     return state
-  | SendMessage msg -> failwith "Unimplemented"
+  | SendMessage msg -> handle_send_message state msg
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
 
