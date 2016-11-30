@@ -256,14 +256,14 @@ let process_msg_messsage state session_id from body =
           chat_state.online_users in
       let new_chat_state =
         {
-         online_users =
-           ((outgoing_session,
-             Crypto.advance incoming_session), from)::new_online_users;
-         messages = (from.user.username, body)::chat_state.messages;
+          online_users =
+            ((outgoing_session,
+              Crypto.advance incoming_session), from)::new_online_users;
+          messages = (from.user.username, body)::chat_state.messages;
         } in
       return { state with
                current_chat = Some new_chat_state;
-      }
+             }
     ) else failwith "failwith bad session ID, I should probably do something better here"
 
 let parse_message state msg =
