@@ -186,8 +186,7 @@ let handle_incoming_message addr str =
   printf_system "Received: %s\nFound: %s" str addr;
   Ivar.fill !message_buf_tail (addr, str);
   message_buf_tail := Ivar.create ();
-  Queue.add (Ivar.read !message_buf_tail) message_buf;
-  failwith "foo"
+  Queue.add (Ivar.read !message_buf_tail) message_buf
 
 let resolve_init_body state body =
   let split = Str.split (Str.regexp "\n") body |>
