@@ -347,6 +347,17 @@ let rec main program_state =
   >>= fun new_state ->
   main new_state
 
+let rec prompt_password () =
+  print_system "Please enter your password:\n";
+  read_input() >>= (fun password ->
+    try
+      return (Keypersist.load_keystore password)
+    with
+      Persistence.Bad_password ->
+        print_system "Incorrect password!\n";
+        prompt_password ()
+  )
+
 let _ =
   print_normal
     (Logo.program_name^"\n");
@@ -355,9 +366,7 @@ let _ =
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
-  print_system "Please enter your password:\n";
-  let _ = read_input() >>= (fun password ->
-      return (Keypersist.load_keystore password)) >>=
+  let _ = prompt_password() >>=
     (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
         (print_system "Generating a fresh key pair.\n";
          let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
