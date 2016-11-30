@@ -105,12 +105,14 @@ let send_message state msg_type message username =
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
     Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
-  Msgtransport.send_msg online_user.ip_address chat_port full_message >>| (fun s ->
-      let new_user_state = (next_session, online_user) in
+  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun s ->
       let new_user_map = chat_state.online_users |>
                          List.remove_assoc session in
       let new_chat_state =
-        {online_users = (next_session, online_user)::new_user_map; messages = (username, message)::chat_state.messages} in
+        {
+          online_users = (next_session, online_user)::new_user_map;
+          messages = (username, message)::chat_state.messages
+        } in
       {state with current_chat = Some new_chat_state}
     )
 
@@ -224,6 +226,10 @@ let process_init_message state addr session_id body =
       ) else return state
     | None -> print_system "Ignoring invitation.";
       return state )
+
+let process_msg_messsage state session_id body =
+  if state.current_chat <> None then return state else (
+    failwith "foo")
 
 let parse_message state msg =
   let split = Str.bounded_split (Str.regexp "\n") msg 3 in
