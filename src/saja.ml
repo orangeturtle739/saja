@@ -318,11 +318,11 @@ let _ =
   let _ = listen chat_port handle_incoming_message in
   let keys = Keypersist.load_keystore "password" in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
-      (print_system "Generating a fresh key pair.";
+      (print_system "Generating a fresh key pair.\n";
        let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
     else keys in
   let keys = (if Keypersist.retrieve_username keys = "" then
-                (print_system "Messaging is more fun when people know your name. What's your name?";
+                (print_system "Messaging is more fun when people know your name. What's your name?\n";
                  read_input() >>= (fun new_user ->
                      let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
                      printf_system "%s" okay_message;
