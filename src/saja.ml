@@ -29,7 +29,7 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
-  | TransmitKeys
+  | TransmitKeys of ip_address
   | ProcessUsers
 
 (* [program state] is a representation type containing the relevant
@@ -40,9 +40,9 @@ type program_state = {
   current_chat: chat_state option;
 }
 
-let transmit_keys state =
-  Discovery.send_broadcast () >>= (fun sent ->
-      (if sent then print_system "Sent broadcast.\n" else
+let transmit_keys state ip =
+  Discovery.tcp_key_transmit ip >>= (fun sent ->
+      (if sent then print_system "Sent key.\n" else
          print_error "There was a problem sending your key.\n"); return state)
 
 let rec process_users state =
@@ -341,7 +341,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> handle_send_message state msg
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
-  | TransmitKeys -> transmit_keys state
+  | TransmitKeys ip -> transmit_keys state ip
   | ProcessUsers -> process_users state
 
 let action_of_string (s: string) : action =
@@ -351,10 +351,10 @@ let action_of_string (s: string) : action =
   | [":discover"] -> Discover
   | [":quit"] -> QuitProgram
   | [":help"] -> Help
-  | [":transmit"] -> TransmitKeys
   | [":process"] -> ProcessUsers
   | [":info"] -> GetInfo
   | [":exitsession"] -> ExitSession
+  | ":transmit"::[ip] -> TransmitKeys ip
   | ":startsession"::t -> StartSession t
   | _ -> SendMessage s
 
