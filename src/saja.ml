@@ -165,7 +165,7 @@ let start_session state username_list =
     let ip_list = List.map (fun online_user -> online_user.ip_address) users in
     let hash_list = List.map (fun online_user ->
         Crypto.fingerprint online_user.user.public_key) users in
-    let init_msg = List.rev_map2 (fun a b -> a^"\n"^b) ip_list hash_list |>
+    let init_msg = List.rev_map2 (fun a b -> a^" "^b) ip_list hash_list |>
                    String.concat "\n" in
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_str init_msg
@@ -182,6 +182,18 @@ let handle_incoming_message addr str =
   message_buf_tail := Ivar.create ();
   Queue.add (Ivar.read !message_buf_tail) message_buf;
   failwith "foo"
+
+let process_init_message state addr session_id body =
+  if state.current_chat <> None then (
+    print_system "Ignoring incoming init conversation, already in conversation.";
+    return state) else (
+    let split = Str.split (Str.regexp "\n") body |>
+                List.map (Str.split (Str.regexp " ")) |> (List.map (function
+        | ip::fingerprint::[] -> (ip, fingerprint)
+        | _ -> ("foobar", "foobar"))) in
+    let usernames = List.map (fun (ip,_) ->
+        List.find (fun (_,rip) -> ip=rip) state.user_ips) split in
+    failwith "foo")
 
 let receive_messages state = choose
     [
