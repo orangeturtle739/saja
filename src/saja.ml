@@ -215,14 +215,14 @@ let process_init_message state origin_user session_id body =
     match resolve_init_body state body with
     | Some chat_users ->
       let full_chat_users = origin_user::chat_users in
-      print_system "You have been invited to a chat with: ";
+      print_system "You have been invited to a chat with: \n";
       List.map (fun user ->
           printf_system "  * %s (%s)\n" user.user.username user.ip_address)
         full_chat_users |> ignore;
-      print_system "\nWould you like to join the chat? [y/n]";
+      print_system "Would you like to join the chat? [y/n]\n";
       read_yes_no () >>= fun join ->
       if join then (
-        print_system "Joining chat.";
+        print_system "Joining chat.\n";
         return
           {
             state with
@@ -235,7 +235,7 @@ let process_init_message state origin_user session_id body =
                 }
           }
       ) else return state
-    | None -> print_system "Ignoring invitation.";
+    | None -> print_system "Ignoring invitation.\n";
       return state )
 
 let process_msg_messsage state session_id body =
@@ -259,7 +259,7 @@ let decrypt_message state str =
   let signing_key_to_username_map = List.combine public_signing_keys
       (List.split public_key_map |> fst) in
   let username = List.assoc signing_key signing_key_to_username_map in
-  printf_system "Received: %s\nFrom: %s" decrypted username;
+  printf_system "Received: %s\nFrom: %s\n" decrypted username;
   (username, decrypted)
 
 let handle_received_message state addr str =
@@ -285,7 +285,7 @@ let handle_received_message_ignore state addr str =
 
 let handle_send_message state msg =
   if state.current_chat = None then (
-    print_system "Can't send message because you are not in a chat.";
+    print_system "Can't send message because you are not in a chat.\n";
     return state) else
     send_group_message state msg_str msg
 
