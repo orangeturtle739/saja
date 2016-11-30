@@ -2,7 +2,8 @@ open Async.Std
 open Data
 open Console
 
-let trace port = "\n\nAccess denied to port: "^string_of_int(port)^". Kill processes in the port to continue. \n\nSaja is exiting.\n"
+let trace port = "\n\nAccess denied to port: " ^ string_of_int(port) ^
+  ". Kill processes in the port to continue. \n\nSaja is exiting.\n"
 
 let send_msg ip port msg =
   let connector = fun () -> Tcp.connect (Tcp.to_host_and_port ip port) in
