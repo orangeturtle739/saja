@@ -213,7 +213,7 @@ let _ =
     (Logo.program_name^"\n");
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
-  let _ = listen 12999 (fun addr str -> printf_system "Received: %s\nFound: %s" str addr) in
+  let _ = listen chat_port (fun addr str -> printf_system "Received: %s\nFound: %s" str addr) in
   let keys = Keypersist.load_keystore () in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
       (print_system "Generating a fresh key pair.";
