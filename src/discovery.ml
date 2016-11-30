@@ -58,7 +58,7 @@ let tcp_key_receive addr str = match string_to_user str with
 let start_listening () =
   Broadcast.bind_discovery (fun ip -> tcp_key_transmit ip |> ignore);
   Broadcast.start_listening ();
-  Msgtransport.listen tcp_port tcp_key_receive
+  let _ = Msgtransport.listen tcp_port tcp_key_receive in ()
 
 (* Demo function.*)
 let test_discovery () =
