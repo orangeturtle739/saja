@@ -193,21 +193,20 @@ let resolve_init_body state body =
               List.map (Str.split (Str.regexp " ")) |> (List.map (function
       | ip::fingerprint::[] -> (ip, fingerprint)
       | _ -> ("", ""))) in
-  let chat_users = List.map (fun (ip,_) ->
-      List.find (fun (_,rip) -> ip=rip) state.user_ips) split |> List.map fst
-                   |> resolve_users state in
-  chat_users >>>| List.combine split >>>= fun user_data_lst ->
   let my_fingerprint =
     Crypto.fingerprint_f (Keypersist.retrieve_user_key state.keys) in
+  let good_split = List.filter (fun (_, fp) -> fp <> my_fingerprint) split in
+  let chat_users =
+    List.map (fun (ip,_) ->
+        List.find (fun (_,rip) -> ip=rip) state.user_ips) good_split |>
+    List.map fst |> resolve_users state in
+  chat_users >>>| List.combine good_split >>>= fun user_data_lst ->
   let good_list =
-  List.filter
-      (fun ((gip, gfp), {ip_address; user={username; public_key}}) ->
-        my_fingerprint <> (Crypto.fingerprint public_key))
-      user_data_lst |>
     List.for_all
       (fun ((gip, gfp), {ip_address; user={username; public_key}}) ->
          gip = ip_address && gfp = (Crypto.fingerprint public_key))
-       in
+      user_data_lst
+  in
   if good_list then Some (List.split user_data_lst |> snd) else None
 
 
