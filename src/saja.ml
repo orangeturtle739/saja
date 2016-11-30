@@ -164,7 +164,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
-  match tokens with
+  let ntokens = List.filter (fun a -> if a<>"" then true else false) tokens in
+  match ntokens with
   | [":discover"] -> Discover
   | [":quit"] -> QuitProgram
   | [":help"] -> Help
