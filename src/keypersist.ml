@@ -37,8 +37,8 @@ let key_from_json (user, (key: json)) =
         e = key |> member "sign" |> member "e" |> clean_to_string
       };
       encryption_key = {
-        n = key |> member "sign" |> member "n" |> clean_to_string;
-        e = key |> member "sign" |> member "e" |> clean_to_string
+        n = key |> member "encrypt" |> member "n" |> clean_to_string;
+        e = key |> member "encrypt" |> member "e" |> clean_to_string
       }
     }))
 
