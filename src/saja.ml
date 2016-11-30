@@ -323,7 +323,7 @@ let rec main program_state =
   print_normal ">>= ";
   choose
     [
-      choice (Bqueue.take message_buf) (fun (addr, str) ->
+      choice (Bqueue.recent_take message_buf) (fun (addr, str) ->
           `ReadMsg (addr, str));
       choice (Console.read_input ()) (fun str ->
           `ReadConsole str)

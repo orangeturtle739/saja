@@ -18,8 +18,7 @@ let rec queue_input () = really_read_input () >>= fun s ->
 let _ = queue_input ()
 
 let read_input () : string Deferred.t =
-  Bqueue.forget buf;
-  Bqueue.take buf
+  Bqueue.recent_take buf
 
 let print_normal s =
   printf "%s" ("\x1b[0m"^s^"\x1b[0m")

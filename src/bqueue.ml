@@ -17,3 +17,7 @@ let add thing (to_fill, ready) =
   else Ivar.fill (Queue.pop to_fill) thing
 
 let forget (to_fill, ready) = Queue.clear to_fill
+
+let recent_take thing =
+  forget thing;
+  take thing
