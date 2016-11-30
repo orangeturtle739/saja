@@ -42,8 +42,8 @@ type program_state = {
 
 let transmit_keys state =
   Discovery.send_broadcast () >>= (fun sent ->
-    (if sent then print_system "Sent broadcast.\n" else
-    print_error "There was a problem sending your key.\n"); return state)
+      (if sent then print_system "Sent broadcast.\n" else
+         print_error "There was a problem sending your key.\n"); return state)
 
 let rec process_users state =
   let add_user {user={username;public_key}; ip_address} state =
@@ -78,9 +78,9 @@ let rec process_users state =
             keys = write_key username public_key state.keys
           }
       ) in
-    match !found with
-      | [] -> return state
-      | h::t -> found := t; add_user h state >>= process_users
+  match !found with
+  | [] -> return state
+  | h::t -> found := t; add_user h state >>= process_users
 
 let handle_discovery state =
   Discovery.send_broadcast () >>= (fun sent ->
@@ -89,9 +89,9 @@ let handle_discovery state =
         after (Core.Std.sec 1.) >>= (fun _ ->
             (* After a second, process users *)
             process_users state >>=
-              (fun state ->
-                found := []; return state)
-            ))
+            (fun state ->
+               found := []; return state)
+          ))
       else
         (print_system "Error sending broadcast.\n"; return state))
 
@@ -377,41 +377,44 @@ let _ =
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
   (Discovery.bind_discovery
-    (fun online_user -> found := online_user::(!found)));
+     (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
-  let keys = Keypersist.load_keystore "password" in
-  let keys = if Keypersist.retrieve_user_key keys = null_key then
-      (print_system "Generating a fresh key pair.\n";
-       let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
-    else keys in
-  let keys = (if Keypersist.retrieve_username keys = "" then
-                (print_system "Messaging is more fun when people know your name. What's your name?\n";
-                 read_input() >>= (fun new_user ->
-                     let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
-                     printf_system "%s" okay_message;
-                     return (Keypersist.write_username new_user keys)))
-              else (return keys)) >>= (fun keys ->
-      Discovery.start_listening ();
-      let user_key = Keypersist.retrieve_user_key keys in
-      Discovery.set_key {
-        username = Keypersist.retrieve_username keys;
-        public_key = {
-          encryption_key = {
-            n = user_key.full_encryption_key.n;
-            e = user_key.full_encryption_key.e
-          };
-          signing_key = {
-            n = user_key.full_signing_key.n;
-            e = user_key.full_signing_key.e
-          }
-        }
-      };
-      return keys) >>| (fun keys -> main
-                           {
-                             keys=keys;
-                             user_ips = [];
-                             current_chat = None;
-                           }) in
+  print_system "Please enter your password:\n";
+  let _ = read_input() >>= (fun password ->
+      return (Keypersist.load_keystore password)) >>=
+    (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
+        (print_system "Generating a fresh key pair.\n";
+         let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
+      else return keys) >>=
+    (fun keys -> if Keypersist.retrieve_username keys = "" then
+        (print_system "Messaging is more fun when people know your name. What's your name?\n";
+         read_input() >>= (fun new_user ->
+             let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
+             printf_system "%s" okay_message;
+             return (Keypersist.write_username new_user keys)))
+      else (return keys)) >>= 
+    (fun keys ->
+       Discovery.start_listening ();
+       let user_key = Keypersist.retrieve_user_key keys in
+       Discovery.set_key {
+         username = Keypersist.retrieve_username keys;
+         public_key = {
+           encryption_key = {
+             n = user_key.full_encryption_key.n;
+             e = user_key.full_encryption_key.e
+           };
+           signing_key = {
+             n = user_key.full_signing_key.n;
+             e = user_key.full_signing_key.e
+           }
+         }
+       };
+       return keys) >>| (fun keys -> main
+                            {
+                              keys=keys;
+                              user_ips = [];
+                              current_chat = None;
+                            }) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()

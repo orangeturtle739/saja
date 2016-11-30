@@ -13,8 +13,8 @@ let write_file (file: filename) (j: json) (password: string) =
  * with [pass]. If [file] cannot be found, raises a [Sys_error]. *)
 let read_file (file: filename) (password: string) =
   let contents = from_file file |> to_string |>
-  Str.global_replace (Str.regexp "^\"\\|\"$") "" |>
-  pass_decrypt password in
+                 Str.global_replace (Str.regexp "^\"\\|\"$") "" |>
+                 pass_decrypt password in
   match contents with
   | Some stuff -> from_string stuff
   | None -> failwith "Incorrect password"
