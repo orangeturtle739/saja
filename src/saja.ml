@@ -30,6 +30,7 @@ type action =
   | GetInfo
   | ExitSession
   | TransmitKeys
+  | ProcessUsers
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -44,7 +45,7 @@ let transmit_keys state =
     (if sent then print_system "Sent broadcast.\n" else
     print_error "There was a problem sending your key.\n"); return state)
 
-let handle_discovery state =
+let rec process_users state =
   let add_user {user={username;public_key}; ip_address} state =
     let ok =
       if username = (Keypersist.retrieve_username state.keys) then return false
@@ -77,9 +78,11 @@ let handle_discovery state =
             keys = write_key username public_key state.keys
           }
       ) in
-  let rec process_users state = match !found with
-    | [] -> return state
-    | h::t -> found := t; add_user h state >>= process_users in
+    match !found with
+      | [] -> return state
+      | h::t -> found := t; add_user h state >>= process_users
+
+let handle_discovery state =
   Discovery.send_broadcast () >>= (fun sent ->
       if sent then (
         print_system "Sent broadcast.\n";
@@ -313,6 +316,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
   | TransmitKeys -> transmit_keys state
+  | ProcessUsers -> process_users state
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -322,6 +326,7 @@ let action_of_string (s: string) : action =
   | [":quit"] -> QuitProgram
   | [":help"] -> Help
   | [":transmit"] -> TransmitKeys
+  | [":process"] -> ProcessUsers
   | [":info"] -> GetInfo
   | [":exitsession"] -> ExitSession
   | ":startsession"::t -> StartSession t

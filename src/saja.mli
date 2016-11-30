@@ -11,6 +11,7 @@ type action =
   | GetInfo
   | ExitSession
   | TransmitKeys
+  | ProcessUsers
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
