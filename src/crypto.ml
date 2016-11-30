@@ -24,19 +24,30 @@ let padding = Padding.length
 (* The block chaining mode (Cipher Block Chaining) *)
 let chaining = Cipher.CBC
 
+let to64_key = Cryptokit.transform_string (Cryptokit.Base64.encode_compact ())
+let remove_leading_zeros str =
+  let rec find_start n =
+    let cur = String.get str n in
+    if cur |> int_of_char = 0 then find_start (n+1) else n in
+  let start = find_start 0 in
+  String.sub str start (String.length str - start)
+let from64_key str =
+  Cryptokit.transform_string (Cryptokit.Base64.decode ()) str |>
+  remove_leading_zeros
+
 (* Converts a cryptokit RSA key to a Data.full_key *)
 let to_full_key (key:RSA.key) =
   {
-    n = key.RSA.n;
-    e = key.RSA.e;
-    d = key.RSA.d;
+    n = key.RSA.n |> to64_key;
+    e = key.RSA.e |> to64_key;
+    d = key.RSA.d |> to64_key;
   }
 (* Converts a Data.public_key to a cryptokit RSA key *)
 let from_public_key (key:public_key) =
   {
-    RSA.size = (String.length key.n) * 8;
-    RSA.n = key.n;
-    RSA.e = key.e;
+    RSA.size = (String.length (key.n |> from64_key)) * 8;
+    RSA.n = key.n |> from64_key;
+    RSA.e = key.e |> from64_key;
     RSA.d = "";
     RSA.p = "";
     RSA.q = "";
@@ -47,9 +58,9 @@ let from_public_key (key:public_key) =
 (* Converts a Data.private_key to a cryptokit RSA key *)
 let from_private_key (key:private_key) =
   {
-    RSA.size = (String.length key.n) * 8;
-    RSA.n = key.n;
-    RSA.d = key.d;
+    RSA.size = (String.length (key.n |> from64_key)) * 8;
+    RSA.n = key.n |> from64_key;
+    RSA.d = key.d |> from64_key;
     RSA.e = "";
     RSA.p = "";
     RSA.q = "";

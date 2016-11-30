@@ -19,14 +19,12 @@ let user_to_string user =
     user.public_key.signing_key.n;
     user.public_key.signing_key.e;
   ] |>
-  List.map (Cryptokit.transform_string (Cryptokit.Base64.encode_compact ())) |>
   String.concat "\n"
 
 let string_to_user str =
   let parts =
     try
-      Str.split ( "\n" |> Str.regexp_string) str |>
-      List.map (fun str -> Cryptokit.transform_string (Cryptokit.Base64.decode ()) str)
+      Str.split ( "\n" |> Str.regexp_string) str
     with
       Cryptokit.Error _ -> [] in
   match parts with
