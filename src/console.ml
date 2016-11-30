@@ -10,13 +10,13 @@ let read_input () : string Deferred.t =
   | `Eof -> failwith "Uh-oh!"
 
 let print_normal s =
-  printf "%s" ("\x1b[0m"^s)
+  printf "%s" ("\x1b[0m"^s^"\x1b[0m")
 
 let print_error s =
-  printf "%s" ("\x1b[31m"^s)
+  printf "%s" ("\x1b[31m"^s^"\x1b[0m")
 
 let print_system s =
-  printf "%s" ("\x1b[33m"^s)
+  printf "%s" ("\x1b[33m"^s^"\x1b[0m")
 
 let printf_system format = ksprintf print_system format
 let printf_error format = ksprintf print_error format
