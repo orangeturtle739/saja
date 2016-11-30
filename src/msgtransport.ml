@@ -3,7 +3,7 @@ open Data
 open Console
 
 let trace port = "\n\nAccess denied to port: " ^ string_of_int(port) ^
-  ". Kill processes in the port to continue. \n"
+                 ". Kill processes in the port to continue. \n"
 
 let send_msg ip port msg =
   let connector = fun () -> Tcp.connect (Tcp.to_host_and_port ip port) in
@@ -20,11 +20,11 @@ let listen port callback =
                        Unix.Inet_addr.to_string in
         callback str_addr contents |> return) in
   server |> try_with >>| (function
-    | Core.Std.Ok a    -> ()
-    | Core.Std.Error _ -> let tmsg = trace port in
-                          print_error tmsg;
-                          print_error "\nSaja is exiting.\n";
-                          ignore (Async.Std.exit(0)))
+      | Core.Std.Ok a    -> ()
+      | Core.Std.Error _ -> let tmsg = trace port in
+        print_error tmsg;
+        print_error "\nSaja is exiting.\n";
+        ignore (Async.Std.exit(0)))
 
 let tcp_demo () =
   let a = listen 3654 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
