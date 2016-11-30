@@ -14,6 +14,11 @@ type t = {
 (* The name of the file where key data is stored. *)
 let keyfile = "keys.json"
 
+(* [clean_to_string json] converts json to string and strips excess
+ * escaped quotations returned by Yojson. *)
+let clean_to_string j =
+  j |> to_string |> Str.global_replace (Str.regexp "^\"\\|\"$") ""
+
 (* [key_to_json] parses a user-key pair into a JSON friendly tuple. *)
 let key_to_json (user, (key: public_key_pair)) =
   (user,
@@ -28,12 +33,12 @@ let key_to_json (user, (key: public_key_pair)) =
 let key_from_json (user, (key: json)) =
   Util.((user, {
       signing_key = {
-        n = key |> member "sign" |> member "n" |> to_string;
-        e = key |> member "sign" |> member "e" |> to_string
+        n = key |> member "sign" |> member "n" |> clean_to_string;
+        e = key |> member "sign" |> member "e" |> clean_to_string
       };
       encryption_key = {
-        n = key |> member "sign" |> member "n" |> to_string;
-        e = key |> member "sign" |> member "e" |> to_string
+        n = key |> member "sign" |> member "n" |> clean_to_string;
+        e = key |> member "sign" |> member "e" |> clean_to_string
       }
     }))
 
@@ -73,19 +78,18 @@ let load_keystore () =
     let public_keys = List.fold_left (fun s (user, key) ->
         Store.add user key s)
         Store.empty public_key_list in
-    let user = j |> Util.member "user" |> to_string |> 
-               Str.global_replace (Str.regexp "\"") "" in
+    let user = j |> Util.member "user" |> clean_to_string in
     let user_key = j |> Util.member "user_key" in
     let user_key_info = Util.({
         full_signing_key = {
-          n = user_key |> member "sign" |> member "n" |> to_string;
-          e = user_key |> member "sign" |> member "e" |> to_string;
-          d = user_key |> member "sign" |> member "d" |> to_string
+          n = user_key |> member "sign" |> member "n" |> clean_to_string;
+          e = user_key |> member "sign" |> member "e" |> clean_to_string;
+          d = user_key |> member "sign" |> member "d" |> clean_to_string
         };
         full_encryption_key = {
-          n = user_key |> member "encrypt" |> member "n" |> to_string;
-          e = user_key |> member "encrypt" |> member "e" |> to_string;
-          d = user_key |> member "encrypt" |> member "d" |> to_string
+          n = user_key |> member "encrypt" |> member "n" |> clean_to_string;
+          e = user_key |> member "encrypt" |> member "e" |> clean_to_string;
+          d = user_key |> member "encrypt" |> member "d" |> clean_to_string
         }
       })
     in {
