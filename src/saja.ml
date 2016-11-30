@@ -86,20 +86,22 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Discover -> handle_discovery state
   | StartSession user_lst -> failwith "???"
   | QuitProgram -> print_endline ">>|"; Async.Std.exit(0)
-  | Help -> print_endline ("---------------\n"^
-      "Saja (adj) - Wise, sensible. [Ido language]\n"^
-      "SAJA is an encrypted, peer-to-peer messaging system.\n"^
-      "It was developed by four Cornell University students for a computer science course project.\n\n"^
-      "COMMANDS:\n"^
-      ":help -> Displays help/about window.\n"^
-      ":quit -> Exits the program.\n"^
-      ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
-      ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
-      ":info -> Gets information about the current session."^
-      ":exitsession -> Exits the messaging session (but not the program). \n\n"^
-      "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it."
-    );
-      return state
+  | Help -> 
+    print_endline 
+      ("---------------\n"^
+       "Saja (adj) - Wise, sensible. [Ido language]\n"^
+       "SAJA is an encrypted, peer-to-peer messaging system.\n"^
+       "It was developed by four Cornell University students for a computer science course project.\n\n"^
+       "COMMANDS:\n"^
+       ":help -> Displays help/about window.\n"^
+       ":quit -> Exits the program.\n"^
+       ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
+       ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
+       ":info -> Gets information about the current session."^
+       ":exitsession -> Exits the messaging session (but not the program). \n\n"^
+       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it."
+      );
+    return state
   | SendMessage msg -> failwith "Unimplemented"
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
@@ -133,11 +135,11 @@ let _ =
        let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
     else keys in
   let keys = (if Keypersist.retrieve_username keys = "" then
-      (print_endline "Messaging is more fun when people know your name. What's your name?";
-       read_input() >>= (fun new_user ->
-         print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
-         return (Keypersist.write_username new_user keys)))
-    else (return keys)) >>= (fun keys ->
+                (print_endline "Messaging is more fun when people know your name. What's your name?";
+                 read_input() >>= (fun new_user ->
+                     print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
+                     return (Keypersist.write_username new_user keys)))
+              else (return keys)) >>= (fun keys ->
       Discovery.start_listening ();
       let user_key = Keypersist.retrieve_user_key keys in
       Discovery.set_key {
@@ -154,6 +156,6 @@ let _ =
         }
       };
       return keys) >>| (fun keys -> main {keys=keys; username="amit"; user_ips = []}) in
-      let _ = Signal.handle [Signal.of_string "sigint"] 
-              (fun _ -> printf "\nBye!\n"; ignore (Async.Std.exit(0));) in
-      let _ = Scheduler.go() in ()
+  let _ = Signal.handle [Signal.of_string "sigint"] 
+      (fun _ -> printf "\nBye!\n"; ignore (Async.Std.exit(0));) in
+  let _ = Scheduler.go() in ()

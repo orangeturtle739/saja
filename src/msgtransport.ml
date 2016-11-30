@@ -4,9 +4,9 @@ open Data
 let send_msg ip port msg =
   let connector = fun () -> Tcp.connect (Tcp.to_host_and_port ip port) in
   connector |> try_with >>= (function
-    | Core.Std.Ok (_,_,w)-> Writer.write w msg;
-                            Writer.close w >>= fun () -> return true
-    | Core.Std.Error   _ -> return false)
+      | Core.Std.Ok (_,_,w)-> Writer.write w msg;
+        Writer.close w >>= fun () -> return true
+      | Core.Std.Error   _ -> return false)
 
 let listen port callback =
   let terminal = Tcp.on_port port in

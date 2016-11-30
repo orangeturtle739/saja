@@ -142,15 +142,15 @@ let write_user_key (key: full_key_pair) (store: t) =
 (* [user_stored user store] is [true] if [user] is stored in
  * the [store]. *)
 let user_stored (user: username) (store: t) =
-    Store.mem user store.outside_keys
+  Store.mem user store.outside_keys
 
 (* [retrieve_key user store] is an the public key pair of [user] in
  * [store]. *)
 let retrieve_key (user: username) (store: t) =
-    try
-        Store.find user store.outside_keys
-    with
-        Not_found -> failwith "No key stored for user"
+  try
+    Store.find user store.outside_keys
+  with
+    Not_found -> failwith "No key stored for user"
 
 (* [retrieve_keys store] is an association list containing all known
  * verified username-public key pairs in [store]. *)
@@ -160,11 +160,11 @@ let retrieve_keys (store: t) =
 (* [retrieve_user key store] is the username corresponding to public [key]
  * pair in [store]. *)
 let retrieve_user (key: public_key_pair) (store: t) =
-    try
-      let (users, keys) = List.split (retrieve_keys store) in
-      List.combine keys users |> List.assoc key
-    with
-      Not_found -> failwith "No user stored for key"
+  try
+    let (users, keys) = List.split (retrieve_keys store) in
+    List.combine keys users |> List.assoc key
+  with
+    Not_found -> failwith "No user stored for key"
 
 (* [retrieve_username store] is the username of the user stored in the
  * key store. *)

@@ -30,8 +30,8 @@ let rec read_yes_no () : bool Deferred.t =
   in
 
   Reader.read_line stdin >>= function
-    | `Ok s -> let lower = String.lowercase_ascii s in
-        if yes lower then return true
-        else if no lower then return false
-        else read_yes_no()
-    | `Eof -> failwith "Uh-oh!"
+  | `Ok s -> let lower = String.lowercase_ascii s in
+    if yes lower then return true
+    else if no lower then return false
+    else read_yes_no()
+  | `Eof -> failwith "Uh-oh!"
