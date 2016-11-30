@@ -267,7 +267,7 @@ let handle_received_message state addr str =
   match parse_message state decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state origin_user session_id body
-  | _ -> failwith "process message unimplemented"
+  | _ -> return state
 
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
@@ -275,7 +275,7 @@ let handle_received_message_ignore state addr str =
   | None -> return state
 
 let handle_send_message state msg =
-  if state.current_chat <> None then (
+  if state.current_chat = None then (
     print_system "Can't send message because you are not in a chat.";
     return state) else
     send_group_message state msg_str msg
