@@ -16,7 +16,7 @@ let null_key = {
 }
 
 type chat_state = {
-  online_users: (session_id * online_user) list;
+  online_users: ((session_id * session_id) * online_user) list;
   messages: (username * message) list
 }
 
@@ -97,7 +97,7 @@ let handle_discovery state =
 
 let find_session chat_state target_username =
   chat_state.online_users |>
-  List.find (fun (id, {user={username; public_key=_}; ip_address}) -> target_username = username)
+  List.find (fun (_, {user={username; public_key=_}; ip_address}) -> target_username = username)
 
 let unwrap = function
   | Some thing -> thing
@@ -107,8 +107,8 @@ let full_key_to_private {n;e;d} = {n;d}
 
 let send_message state msg_type message username =
   let chat_state = state.current_chat |> unwrap in
-  let (session, online_user) = find_session chat_state username in
-  let next_session = Crypto.advance session in
+  let ((outgoing_session, incoming_session), online_user) = find_session chat_state username in
+  let next_session = Crypto.advance outgoing_session in
   let full_message = next_session^"\n"^msg_type^"\n"^message in
   let key = Keypersist.retrieve_key username state.keys in
   let signing = Keypersist.retrieve_user_key state.keys in
@@ -116,10 +116,10 @@ let send_message state msg_type message username =
     Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
   Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun s ->
       let new_user_map = chat_state.online_users |>
-                         List.remove_assoc session in
+                         List.remove_assoc (outgoing_session, incoming_session) in
       let new_chat_state =
         {
-          online_users = (next_session, online_user)::new_user_map;
+          online_users = ((next_session, incoming_session), online_user)::new_user_map;
           messages = (username, message)::chat_state.messages
         } in
       {state with current_chat = Some new_chat_state}
@@ -170,7 +170,7 @@ let start_session state username_list =
   | Some users ->
     let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
     let chat = {
-      online_users = List.combine initial_ids users;
+      online_users = List.combine (List.combine initial_ids initial_ids) users;
       messages = []
     } in
     let ip_list = List.map (fun online_user -> online_user.ip_address) users in
@@ -229,7 +229,7 @@ let process_init_message state origin_user session_id body =
             current_chat= Some
                 {
                   online_users =
-                    List.combine (List.map (fun _ -> session_id)
+                    List.combine (List.map (fun _ -> (session_id, session_id))
                                     full_chat_users) full_chat_users;
                   messages = [];
                 }
@@ -238,9 +238,33 @@ let process_init_message state origin_user session_id body =
     | None -> print_system "Ignoring invitation.";
       return state )
 
-let process_msg_messsage state session_id body =
-  if state.current_chat <> None then return state else (
-    failwith "foo")
+let rec assoc2 thing = function
+  | [] -> None
+  | (value, key)::_ when key=thing -> Some value
+  | _::t -> assoc2 thing t
+
+let process_msg_messsage state session_id from body =
+  match state.current_chat with
+  | None -> return state
+  | Some chat_state ->
+    let (outgoing_session, incoming_session) =
+      assoc2 from chat_state.online_users |> unwrap in
+    if incoming_session = session_id then (
+      printf_normal "%s:\n%s" from.user.username body;
+      let new_online_users =
+        List.remove_assoc (outgoing_session, incoming_session)
+          chat_state.online_users in
+      let new_chat_state =
+        {
+          online_users =
+            ((outgoing_session,
+              Crypto.advance incoming_session), from)::new_online_users;
+          messages = (from.user.username, body)::chat_state.messages;
+        } in
+      return { state with
+               current_chat = Some new_chat_state;
+             }
+    ) else failwith "failwith bad session ID, I should probably do something better here"
 
 let parse_message state msg =
   let split = Str.bounded_split (Str.regexp "\n") msg 3 in
@@ -276,6 +300,8 @@ let handle_received_message state addr str =
   match parse_message state decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state origin_user session_id body
+  | Some (session_id, msg_type, body) when msg_type = msg_str ->
+    process_msg_messsage state session_id origin_user body
   | _ -> return state
 
 let handle_received_message_ignore state addr str =
@@ -377,7 +403,7 @@ let _ =
              let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
              printf_system "%s" okay_message;
              return (Keypersist.write_username new_user keys)))
-      else (return keys)) >>= 
+      else (return keys)) >>=
     (fun keys ->
        Discovery.start_listening ();
        let user_key = Keypersist.retrieve_user_key keys in
