@@ -28,11 +28,6 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
-  | ToggleMode
-
-type send_mode =
-  | SendMode
-  | ReceiveMode
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -40,7 +35,6 @@ type program_state = {
   keys: Keypersist.t;
   user_ips: (username * ip_address) list;
   current_chat: chat_state option;
-  mode: send_mode
 }
 
 let handle_discovery state =
@@ -243,21 +237,6 @@ let handle_received_message state addr str =
     process_init_message state addr session_id body
   | _ -> failwith "process message unimplemented"
 
-let receive_messages state : program_state Deferred.t =
-  choose
-    [
-      choice (Bqueue.take message_buf) (fun (addr, str) ->
-          `ReadMsg (addr, str));
-      choice (Console.read_input ()) (fun str ->
-          `ReadConsole str)
-    ] >>= fun pick ->
-  match pick with
-  | `ReadMsg (addr, str) -> handle_received_message state addr str
-  | `ReadConsole str ->
-    if str <> "" then print_error "Ignoring input, exiting receive mode.\n" else ();
-    return {state with mode = SendMode}
-
-
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
 let execute (command: action) (state: program_state) : program_state Deferred.t =
@@ -284,13 +263,6 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> failwith "Unimplemented"
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
-  | ToggleMode ->
-    if state.mode = SendMode then (
-      print_system "Entering receive mode.\n";
-      receive_messages {state with mode=ReceiveMode} ) else (
-      print_system "Entering send mode.\n";
-      return {state with mode=SendMode})
-
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -302,13 +274,21 @@ let action_of_string (s: string) : action =
   | [":info"] -> GetInfo
   | [":exitsession"] -> ExitSession
   | ":startsession"::t -> StartSession t
-  | _ when s = "" -> ToggleMode
   | _ -> SendMessage s
 
 let rec main program_state =
   print_normal ">>= ";
-  Console.read_input () >>= fun s ->
-  execute (action_of_string s) program_state >>= fun new_state ->
+  choose
+    [
+      choice (Bqueue.take message_buf) (fun (addr, str) ->
+          `ReadMsg (addr, str));
+      choice (Console.read_input ()) (fun str ->
+          `ReadConsole str)
+    ] >>= fun pick ->
+  (match pick with
+   | `ReadMsg (addr, str) -> handle_received_message program_state addr str
+   | `ReadConsole s -> execute (action_of_string s) program_state)
+  >>= fun new_state ->
   main new_state
 
 let _ =
@@ -344,7 +324,12 @@ let _ =
           }
         }
       };
-      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None; mode = SendMode}) in
+      return keys) >>| (fun keys -> main
+                           {
+                             keys=keys;
+                             user_ips = [];
+                             current_chat = None;
+                           }) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()
