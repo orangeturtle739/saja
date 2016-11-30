@@ -126,7 +126,8 @@ let send_group_message state msg_type message =
     | h::t -> send_message state msg_type message h >>= (fun next_state ->
         send_to_users next_state t) in
   let username_list =
-    state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |> snd |> List.map (fun online_user -> online_user.user.username) in
+    state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |>
+    snd |> List.map (fun online_user -> online_user.user.username) in
   send_to_users state username_list
 
 let (>>>=) m f = match m with
