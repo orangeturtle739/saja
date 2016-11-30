@@ -123,16 +123,44 @@ let send_group_message state msg_type message =
     state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |> snd |> List.map (fun online_user -> online_user.user.username) in
   send_to_users state username_list
 
-let start_session state users =
-  let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
-  let chat = {
-    online_users = List.combine initial_ids users;
-    messages = []
-  } in
-  let ip_list = List.map (fun online_user -> online_user.ip_address) users |>
-                String.concat "\n" in
-  let new_state = {state with current_chat = Some chat} in
-  send_group_message new_state init_str ip_list
+let (>>>=) m f = match m with
+  | Some thing -> f thing
+  | None -> None
+let (>>>|) m f =
+  m >>>= (fun thing -> Some (f thing))
+
+let resolve_user state username =
+  (if List.mem_assoc username state.user_ips then
+     Some (List.assoc username state.user_ips) else None) >>>| fun ip ->
+  {
+    user =
+      {
+        username = username;
+        public_key = Keypersist.retrieve_key username state.keys;
+      };
+    ip_address = ip
+  }
+
+
+let rec resolve_users state = function
+  | [] -> Some []
+  | h::t -> resolve_user state h >>>= fun resolved ->
+    resolve_users state t >>>| fun rt ->
+    resolved::rt
+
+let start_session state username_list =
+  match resolve_users state username_list with
+  | Some users ->
+    let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
+    let chat = {
+      online_users = List.combine initial_ids users;
+      messages = []
+    } in
+    let ip_list = List.map (fun online_user -> online_user.ip_address) users |>
+                  String.concat "\n" in
+    let new_state = {state with current_chat = Some chat} in
+    send_group_message new_state init_str ip_list
+  | None -> return state
 
 
 (* [execute] takes an action and a program state and returns
@@ -140,7 +168,7 @@ let start_session state users =
 let execute (command: action) (state: program_state) : program_state Deferred.t =
   match command with
   | Discover -> handle_discovery state
-  | StartSession user_lst -> start_session state (failwith "foo")
+  | StartSession user_lst -> start_session state user_lst
   | QuitProgram -> print_normal ">>|\n"; Async.Std.exit(0)
   | Help ->
     print_system
