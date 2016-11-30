@@ -120,15 +120,20 @@ let send_message state msg_type message username =
       {state with current_chat = Some new_chat_state}
     )
 
-let send_group_message state msg_type message =
+let send_group_messages state msg_type message_list =
   let rec send_to_users state = function
     | [] -> return state
-    | h::t -> send_message state msg_type message h >>= (fun next_state ->
-        send_to_users next_state t) in
+    | (user, message)::t ->
+      send_message state msg_type message user >>= (fun next_state ->
+          send_to_users next_state t) in
   let username_list =
     state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |>
     snd |> List.map (fun online_user -> online_user.user.username) in
-  send_to_users state username_list
+  send_to_users state (List.combine username_list message_list)
+
+let send_group_message state msg_type message =
+  state.current_chat |> unwrap |> (fun x -> x.online_users) |>
+  List.map (fun _ -> message) |> send_group_messages state msg_type
 
 let (>>>=) m f = match m with
   | Some thing -> f thing
@@ -184,26 +189,74 @@ let handle_incoming_message addr str =
   Queue.add (Ivar.read !message_buf_tail) message_buf;
   failwith "foo"
 
-let process_init_message state addr session_id body =
-  if state.current_chat <> None then (
-    print_system "Ignoring incoming init conversation, already in conversation.";
-    return state) else (
-    let split = Str.split (Str.regexp "\n") body |>
-                List.map (Str.split (Str.regexp " ")) |> (List.map (function
-        | ip::fingerprint::[] -> (ip, fingerprint)
-        | _ -> ("foobar", "foobar"))) in
-    let usernames = List.map (fun (ip,_) ->
-        List.find (fun (_,rip) -> ip=rip) state.user_ips) split in
-    failwith "foo")
+let resolve_init_body state body =
+  let split = Str.split (Str.regexp "\n") body |>
+              List.map (Str.split (Str.regexp " ")) |> (List.map (function
+      | ip::fingerprint::[] -> (ip, fingerprint)
+      | _ -> ("", ""))) in
+  let chat_users = List.map (fun (ip,_) ->
+      List.find (fun (_,rip) -> ip=rip) state.user_ips) split |> List.map fst
+                   |> resolve_users state in
+  chat_users >>>| List.combine split >>>= fun user_data_lst ->
+  let good_list = List.for_all
+      (fun ((gip, gfp), {ip_address; user={username; public_key}}) ->
+         gip = ip_address && gfp = (Crypto.fingerprint public_key))
+      user_data_lst in
+  if good_list then Some (List.split user_data_lst |> snd) else None
 
-let receive_messages state = choose
+
+let process_init_message state addr session_id body =
+  if state.current_chat <> None then return state else (
+    match resolve_init_body state body with
+    | Some chat_users ->
+      print_system "You have been invited to a chat with: ";
+      List.map (fun user ->
+          printf_system "  * %s (%s)\n" user.user.username user.ip_address)
+        chat_users |> ignore;
+      print_system "\nWould you like to join the chat? [y/n]";
+      read_yes_no () >>= fun join ->
+      if join then (
+        print_system "Joining chat.";
+        return
+          {
+            state with
+            current_chat= Some
+                {
+                  online_users =
+                    List.combine (List.map (fun _ -> session_id) chat_users) chat_users;
+                  messages = [];
+                }
+          }
+      ) else return state
+    | None -> print_system "Ignoring invitation.";
+      return state )
+
+let parse_message state msg =
+  let split = Str.bounded_split (Str.regexp "\n") msg 3 in
+  match split with
+  | session_id::msg_type::body::[] -> Some (session_id, msg_type, body)
+  | _ -> None
+
+let handle_received_message state addr str =
+  match parse_message state str with
+  | Some (session_id, msg_type, body) when msg_type = init_str ->
+    process_init_message state addr session_id body
+  | _ -> failwith "process message unimplemented"
+
+let receive_messages state : program_state Deferred.t =
+  choose
     [
       choice (Queue.peek message_buf) (fun (addr, str) ->
-          failwith "process message unimplemented");
+          `ReadMsg (addr, str));
       choice (Console.read_input ()) (fun str ->
-          if str <> "" then print_error "Ignoring input, exiting receive mode." else ();
-          return {state with mode = SendMode});
-    ]
+          `ReadConsole str)
+    ] >>= fun pick ->
+  match pick with
+  | `ReadMsg (addr, str) -> handle_received_message state addr str
+  | `ReadConsole str ->
+    if str <> "" then print_error "Ignoring input, exiting receive mode.\n" else ();
+    return {state with mode = SendMode}
+
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -231,7 +284,13 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> failwith "Unimplemented"
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
-  | ToggleMode -> failwith "Unimplemented"
+  | ToggleMode ->
+    if state.mode = SendMode then (
+      print_system "Entering receive mode.\n";
+      receive_messages {state with mode=ReceiveMode} ) else (
+      print_system "Entering send mode.\n";
+      return {state with mode=SendMode})
+
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -285,7 +344,7 @@ let _ =
           }
         }
       };
-      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None; mode = ReceiveMode}) in
+      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None; mode = SendMode}) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()
