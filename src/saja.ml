@@ -38,24 +38,24 @@ let handle_discovery state =
     (fun online_user -> found := online_user::(!found));
   let add_user {user={username;public_key}; ip_address} state =
     let ok = if Keypersist.verify_key username public_key state.keys then
-        (printf "Discovered @%s at %s\n" username ip_address; return true) else
+        (print_system "Discovered @%s at %s\n" username ip_address; return true) else
       if Keypersist.user_stored username state.keys then
-        (printf "*******************************\n";
-         printf "Warning! There is something fishy about the key for @%s\n" username;
-         printf "The key stored in your keychain has a different fingerprint than\n";
-         printf "the key received:\n";
-         printf "Keychain: %s\n"
+        (print_system "*******************************\n";
+         print_system "Warning! There is something fishy about the key for @%s\n" username;
+         print_system "The key stored in your keychain has a different fingerprint than\n";
+         print_system "the key received:\n";
+         print_system "Keychain: %s\n"
            (Keypersist.retrieve_key username state.keys |> Crypto.fingerprint);
-         printf "Received: %s\n"
+         print_system "Received: %s\n"
            (Crypto.fingerprint public_key);
-         printf "Would you like to reject the received key? [y/n]\n";
+         print_system "Would you like to reject the received key? [y/n]\n";
          read_yes_no () >>| not) else
-        (printf "*******************************";
-         printf "Warning! There is no key in your keychain for @%s\n" username;
-         printf "Fingerprint: %s\n"
+        (print_system "*******************************";
+         print_system "Warning! There is no key in your keychain for @%s\n" username;
+         print_system "Fingerprint: %s\n"
            (Crypto.fingerprint public_key);
-         printf "You should verify the fingerprint in person before accepting this key\n";
-         printf "Would you like to accept the received key? [y/n]\n";
+         print_system "You should verify the fingerprint in person before accepting this key\n";
+         print_system "Would you like to accept the received key? [y/n]\n";
          read_yes_no ()) in
     ok >>| (fun really_ok ->
         if not really_ok then state else
@@ -71,13 +71,13 @@ let handle_discovery state =
     | h::t -> found := t; add_user h state >>= process_users in
   Discovery.send_broadcast () >>= (fun sent ->
       if sent then (
-        print_endline "Sent broadcast.";
+        print_system "Sent broadcast.\n";
         after (Core.Std.sec 1.) >>= (fun _ ->
             (* After a second, stop collecting users *)
             Discovery.bind_discovery (fun _ -> ());
             process_users state))
       else
-        (print_endline "Error sending broadcast."; return state))
+        (print_system "Error sending broadcast.\n"; return state))
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -86,8 +86,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Discover -> handle_discovery state
   | StartSession user_lst -> failwith "???"
   | QuitProgram -> print_endline ">>|"; Async.Std.exit(0)
-  | Help -> 
-    print_endline 
+  | Help ->
+    print_endline
       ("---------------\n"^
        "Saja (adj) - Wise, sensible. [Ido language]\n"^
        "SAJA is an encrypted, peer-to-peer messaging system.\n"^
@@ -118,7 +118,7 @@ let action_of_string (s: string) : action =
   | _ -> SendMessage s
 
 let rec main program_state =
-  printf ">>= ";
+  print_system ">>= ";
   Console.read_input () >>= fun s ->
   execute (action_of_string s) program_state >>= fun new_state ->
   main new_state
@@ -128,16 +128,17 @@ let _ =
     Logo.program_name;
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
-  let _ = listen 12999 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
+  let _ = listen 12999 (fun addr str -> print_system "Received: %s\nFound: %s" str addr) in
   let keys = Keypersist.load_keystore () in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
-      (print_endline "Generating a fresh key pair.";
+      (print_system "Generating a fresh key pair.";
        let new_key = Crypto.gen_keys () in Keypersist.write_user_key new_key keys)
     else keys in
   let keys = (if Keypersist.retrieve_username keys = "" then
-                (print_endline "Messaging is more fun when people know your name. What's your name?";
+                (print_system "Messaging is more fun when people know your name. What's your name?";
                  read_input() >>= (fun new_user ->
-                     print_endline ("Alrighty! We'll call you " ^ new_user ^ ".");
+                    let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
+                     print_system "%s" okay_message;
                      return (Keypersist.write_username new_user keys)))
               else (return keys)) >>= (fun keys ->
       Discovery.start_listening ();
@@ -156,6 +157,6 @@ let _ =
         }
       };
       return keys) >>| (fun keys -> main {keys=keys; username="amit"; user_ips = []}) in
-  let _ = Signal.handle [Signal.of_string "sigint"] 
-      (fun _ -> printf "\nBye!\n"; ignore (Async.Std.exit(0));) in
+  let _ = Signal.handle [Signal.of_string "sigint"]
+      (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()
