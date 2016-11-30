@@ -28,6 +28,11 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
+  | ToggleMode
+
+type send_mode =
+  | SendMode
+  | ReceiveMode
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -35,6 +40,7 @@ type program_state = {
   keys: Keypersist.t;
   user_ips: (username * ip_address) list;
   current_chat: chat_state option;
+  mode: send_mode
 }
 
 let handle_discovery state =
@@ -156,12 +162,35 @@ let start_session state username_list =
       online_users = List.combine initial_ids users;
       messages = []
     } in
-    let ip_list = List.map (fun online_user -> online_user.ip_address) users |>
-                  String.concat "\n" in
+    let ip_list = List.map (fun online_user -> online_user.ip_address) users in
+    let hash_list = List.map (fun online_user ->
+        Crypto.fingerprint online_user.user.public_key) users in
+    let init_msg = List.rev_map2 (fun a b -> a^"\n"^b) ip_list hash_list |>
+                   String.concat "\n" in
     let new_state = {state with current_chat = Some chat} in
-    send_group_message new_state init_str ip_list
+    send_group_message new_state init_str init_msg
   | None -> return state
 
+let message_buf_tail = Ivar.create () |> ref
+let message_buf =
+  let queue = Queue.create () in
+  Queue.add (Ivar.read !message_buf_tail) queue; queue
+
+let handle_incoming_message addr str =
+  printf_system "Received: %s\nFound: %s" str addr;
+  Ivar.fill !message_buf_tail (addr, str);
+  message_buf_tail := Ivar.create ();
+  Queue.add (Ivar.read !message_buf_tail) message_buf;
+  failwith "foo"
+
+let receive_messages state = choose
+    [
+      choice (Queue.peek message_buf) (fun (addr, str) ->
+          failwith "process message unimplemented");
+      choice (Console.read_input ()) (fun str ->
+          if str <> "" then print_error "Ignoring input, exiting receive mode." else ();
+          return {state with mode = SendMode});
+    ]
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -189,6 +218,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> failwith "Unimplemented"
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
+  | ToggleMode -> failwith "Unimplemented"
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -200,6 +230,7 @@ let action_of_string (s: string) : action =
   | [":info"] -> GetInfo
   | [":exitsession"] -> ExitSession
   | ":startsession"::t -> StartSession t
+  | _ when s = "" -> ToggleMode
   | _ -> SendMessage s
 
 let rec main program_state =
@@ -213,7 +244,7 @@ let _ =
     (Logo.program_name^"\n");
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
-  let _ = listen chat_port (fun addr str -> printf_system "Received: %s\nFound: %s" str addr) in
+  let _ = listen chat_port handle_incoming_message in
   let keys = Keypersist.load_keystore () in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
       (print_system "Generating a fresh key pair.";
@@ -241,7 +272,7 @@ let _ =
           }
         }
       };
-      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None}) in
+      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None; mode = ReceiveMode}) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()

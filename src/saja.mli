@@ -4,12 +4,13 @@ open Async.Std
 (* [action] represents an action taken. *)
 type action =
   | Discover
-  | StartSession of username list
+  | StartSession of (username list)
   | QuitProgram
   | Help
   | SendMessage of message
   | GetInfo
   | ExitSession
+  | ToggleMode
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
