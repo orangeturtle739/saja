@@ -237,11 +237,30 @@ let parse_message state msg =
   | session_id::msg_type::body::[] -> Some (session_id, msg_type, body)
   | _ -> None
 
+let decrypt_message state str =
+  let public_key_map = Keypersist.retrieve_keys state.keys in
+  let public_signing_keys = List.split public_key_map |> snd |>
+                            List.map (fun x -> x.signing_key) in
+  let decryption_key =
+    (Keypersist.retrieve_user_key state.keys).full_encryption_key |>
+    full_key_to_private in
+  Crypto.decrypt public_signing_keys decryption_key str >>>| fun (decrypted, signing_key) ->
+  let signing_key_to_username_map = List.combine public_signing_keys
+      (List.split public_key_map |> fst) in
+  let username = List.assoc signing_key signing_key_to_username_map in
+  (username, decrypted)
+
 let handle_received_message state addr str =
-  match parse_message state str with
+  decrypt_message state str >>>| fun (username, decrypted_message) ->
+  match parse_message state decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state addr session_id body
   | _ -> failwith "process message unimplemented"
+
+let handle_received_message_ignore state addr str =
+  match handle_received_message state addr str with
+  | Some thing -> thing
+  | None -> return state
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -292,7 +311,7 @@ let rec main program_state =
           `ReadConsole str)
     ] >>= fun pick ->
   (match pick with
-   | `ReadMsg (addr, str) -> handle_received_message program_state addr str
+   | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
    | `ReadConsole s -> execute (action_of_string s) program_state)
   >>= fun new_state ->
   main new_state
