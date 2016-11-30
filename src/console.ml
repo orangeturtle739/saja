@@ -1,3 +1,4 @@
+open Printf
 open Async.Std
 open Data
 
@@ -8,14 +9,19 @@ let read_input () : string Deferred.t =
   | `Ok s -> return s
   | `Eof -> failwith "Uh-oh!"
 
-let print_message : ('a, unit, string, unit) format4 -> 'a =
-  printf "\x1b[0"; printf
+let print_normal s =
+  printf "%s" ("\x1b[0m"^s)
 
-let print_error : ('a, unit, string, unit) format4 -> 'a =
-  printf "\x1b[0;31"; printf
+let print_error s =
+  printf "%s" ("\x1b[31m"^s)
 
-let print_system : ('a, unit, string, unit) format4 -> 'a =
-  printf "\x1b[1;33"; printf
+let print_system s =
+  printf "%s" ("\x1b[33m"^s)
+
+let printf_system format = ksprintf print_system format
+let printf_error format = ksprintf print_error format
+let printf_message format = ksprintf print_error format
+let printf_normal format = ksprintf print_normal format
 
 let rec read_yes_no () : bool Deferred.t =
 
