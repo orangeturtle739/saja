@@ -4,6 +4,9 @@ open Console
 open Async.Std
 open Keypersist
 
+
+let chat_port = 12999
+
 let null_key = {
   full_signing_key={n="0";e="0";d="0"};
   full_encryption_key={n="0";e="0";d="0"}
@@ -29,6 +32,7 @@ type action =
 type program_state = {
   keys: Keypersist.t;
   user_ips: (username * ip_address) list;
+  current_chat: chat_state option;
 }
 
 let handle_discovery state =
@@ -79,6 +83,42 @@ let handle_discovery state =
             process_users state))
       else
         (print_system "Error sending broadcast.\n"; return state))
+
+let find_session chat_state target_username =
+  chat_state.online_users |>
+  List.find (fun (id, {user={username; public_key=_}; ip_address}) -> target_username = username)
+
+let unwrap = function
+  | Some thing -> thing
+  | None -> failwith "Expected some"
+
+let full_key_to_private {n;e;d} = {n;d}
+
+let send_message state message username =
+  let chat_state = state.current_chat |> unwrap in
+  let (session, online_user) = find_session chat_state username in
+  let next_session = Crypto.advance session in
+  let full_message = next_session^"\n"^message in
+  let key = Keypersist.retrieve_key username state.keys in
+  let signing = Keypersist.retrieve_user_key state.keys in
+  let encr_message =
+    Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
+  Msgtransport.send_msg online_user.ip_address chat_port full_message >>| (fun s ->
+      let new_user_state = (next_session, online_user) in
+      let new_user_map = chat_state.online_users |>
+      List.remove_assoc session in
+      let new_chat_state =
+        {online_users = (next_session, online_user)::new_user_map; messages = (username, message)::chat_state.messages} in
+      {state with current_chat = Some new_chat_state}
+    )
+
+let start_session users =
+  let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
+  let chat = {
+    online_users = List.combine initial_ids users;
+    messages = []
+  } in failwith "ahh"
+
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -158,7 +198,7 @@ let _ =
           }
         }
       };
-      return keys) >>| (fun keys -> main {keys=keys; user_ips = []}) in
+      return keys) >>| (fun keys -> main {keys=keys; user_ips = []; current_chat = None}) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()
