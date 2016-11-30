@@ -8,6 +8,7 @@ open Keypersist
 let chat_port = 12999
 let init_str = "init"
 let msg_str = "msg"
+let found = ref []
 
 let null_key = {
   full_signing_key={n="0";e="0";d="0"};
@@ -38,9 +39,6 @@ type program_state = {
 }
 
 let handle_discovery state =
-  let found = ref [] in
-  Discovery.bind_discovery
-    (fun online_user -> found := online_user::(!found));
   let add_user {user={username;public_key}; ip_address} state =
     let ok =
       if username = (Keypersist.retrieve_username state.keys) then return false
@@ -80,9 +78,11 @@ let handle_discovery state =
       if sent then (
         print_system "Sent broadcast.\n";
         after (Core.Std.sec 1.) >>= (fun _ ->
-            (* After a second, stop collecting users *)
-            Discovery.bind_discovery (fun _ -> ());
-            process_users state))
+            (* After a second, process users *)
+            process_users state >>=
+              (fun state ->
+                found := []; return state)
+            ))
       else
         (print_system "Error sending broadcast.\n"; return state))
 
@@ -339,6 +339,8 @@ let _ =
     (Logo.program_name^"\n");
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
+  (Discovery.bind_discovery
+    (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
   let keys = Keypersist.load_keystore "password" in
   let keys = if Keypersist.retrieve_user_key keys = null_key then
