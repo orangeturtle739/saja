@@ -29,6 +29,7 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
+  | TransmitKeys
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -37,6 +38,11 @@ type program_state = {
   user_ips: (username * ip_address) list;
   current_chat: chat_state option;
 }
+
+let transmit_keys state =
+  Discovery.send_broadcast () >>= (fun sent ->
+    (if sent then print_system "Sent broadcast.\n" else
+    print_error "There was a problem sending your key.\n"); return state)
 
 let handle_discovery state =
   let add_user {user={username;public_key}; ip_address} state =
@@ -306,6 +312,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> handle_send_message state msg
   | GetInfo -> failwith "Unimplemented"
   | ExitSession -> failwith "Unimplemented"
+  | TransmitKeys -> transmit_keys state
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -314,6 +321,7 @@ let action_of_string (s: string) : action =
   | [":discover"] -> Discover
   | [":quit"] -> QuitProgram
   | [":help"] -> Help
+  | [":transmit"] -> TransmitKeys
   | [":info"] -> GetInfo
   | [":exitsession"] -> ExitSession
   | ":startsession"::t -> StartSession t

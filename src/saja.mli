@@ -10,6 +10,7 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
+  | TransmitKeys
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
