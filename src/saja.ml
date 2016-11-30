@@ -201,14 +201,15 @@ let resolve_init_body state body =
   if good_list then Some (List.split user_data_lst |> snd) else None
 
 
-let process_init_message state addr session_id body =
+let process_init_message state origin_user session_id body =
   if state.current_chat <> None then return state else (
     match resolve_init_body state body with
     | Some chat_users ->
+      let full_chat_users = origin_user::chat_users in
       print_system "You have been invited to a chat with: ";
       List.map (fun user ->
           printf_system "  * %s (%s)\n" user.user.username user.ip_address)
-        chat_users |> ignore;
+        full_chat_users |> ignore;
       print_system "\nWould you like to join the chat? [y/n]";
       read_yes_no () >>= fun join ->
       if join then (
@@ -219,7 +220,8 @@ let process_init_message state addr session_id body =
             current_chat= Some
                 {
                   online_users =
-                    List.combine (List.map (fun _ -> session_id) chat_users) chat_users;
+                    List.combine (List.map (fun _ -> session_id)
+                                    full_chat_users) full_chat_users;
                   messages = [];
                 }
           }
@@ -252,9 +254,18 @@ let decrypt_message state str =
 
 let handle_received_message state addr str =
   decrypt_message state str >>>| fun (username, decrypted_message) ->
+  let origin_user =
+    {
+      ip_address = addr;
+      user =
+        {
+          username = username;
+          public_key = Keypersist.retrieve_key username state.keys;
+        };
+    } in
   match parse_message state decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
-    process_init_message state addr session_id body
+    process_init_message state origin_user session_id body
   | _ -> failwith "process message unimplemented"
 
 let handle_received_message_ignore state addr str =
