@@ -29,7 +29,6 @@ type action =
 type program_state = {
   keys: Keypersist.t;
   user_ips: (username * ip_address) list;
-  username: username
 }
 
 let handle_discovery state =
@@ -37,7 +36,9 @@ let handle_discovery state =
   Discovery.bind_discovery
     (fun online_user -> found := online_user::(!found));
   let add_user {user={username;public_key}; ip_address} state =
-    let ok = if Keypersist.verify_key username public_key state.keys then
+    let ok =
+      if username = (Keypersist.retrieve_username state.keys) then return false
+      else if Keypersist.verify_key username public_key state.keys then
         (print_system "Discovered @%s at %s\n" username ip_address; return true) else
       if Keypersist.user_stored username state.keys then
         (print_system "*******************************\n";
@@ -137,7 +138,7 @@ let _ =
   let keys = (if Keypersist.retrieve_username keys = "" then
                 (print_system "Messaging is more fun when people know your name. What's your name?";
                  read_input() >>= (fun new_user ->
-                    let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
+                     let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
                      print_system "%s" okay_message;
                      return (Keypersist.write_username new_user keys)))
               else (return keys)) >>= (fun keys ->
@@ -156,7 +157,7 @@ let _ =
           }
         }
       };
-      return keys) >>| (fun keys -> main {keys=keys; username="amit"; user_ips = []}) in
+      return keys) >>| (fun keys -> main {keys=keys; user_ips = []}) in
   let _ = Signal.handle [Signal.of_string "sigint"]
       (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
   let _ = Scheduler.go() in ()
