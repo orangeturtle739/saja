@@ -15,3 +15,5 @@ let rec take (to_fill, ready) =
 let add thing (to_fill, ready) =
   if Queue.is_empty to_fill then Queue.add thing ready
   else Ivar.fill (Queue.pop to_fill) thing
+
+let forget (to_fill, ready) = Queue.clear to_fill

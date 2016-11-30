@@ -174,7 +174,7 @@ let start_session state username_list =
 let message_buf = Bqueue.create ()
 
 let handle_incoming_message addr str =
-  printf_system "Received: %s\nFound: %s" str addr;
+  (* printf_system "Received: %s\nFound: %s" str addr; *)
   Bqueue.add (addr, str) message_buf
 
 let resolve_init_body state body =
