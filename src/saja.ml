@@ -390,7 +390,7 @@ let rec main program_state =
   main new_state
 
 let rec prompt_password () =
-  print_system "Please enter your password:\n";
+  print_system "Please enter your password. If this is your first time, type in your desired password.\n";
   choose
     [
       choice (read_input ()) (fun str ->
