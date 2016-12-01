@@ -10,7 +10,7 @@ type action =
   | SendMessage of message
   | GetInfo
   | ExitSession
-  | TransmitKeys
+  | TransmitKeys of ip_address
   | ProcessUsers
 
 (* [program state] is a representation type containing the relevant
