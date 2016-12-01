@@ -51,10 +51,13 @@ let rec process_users state =
     let ok =
       if username = (Keypersist.retrieve_username state.keys) then return false
       else if Keypersist.verify_key username public_key state.keys then
-        (printf_system "Discovered @%s at %s\n" username ip_address; return true) else
+        (print_system "Discovered ";
+         printf_username "@%s " username;
+         printf_system "at %s\n" ip_address; return true) else
       if Keypersist.user_stored username state.keys then
         (print_system "*******************************\n";
-         printf_system "Warning! There is something fishy about the key for @%s\n" username;
+         print_system "Warning! There is something fishy about the key for ";
+         printf_username "@%s\n" username;
          print_system "The key stored in your keychain has a different fingerprint than\n";
          print_system "the key received:\n";
          printf_system "Keychain: %s\n"
@@ -211,7 +214,7 @@ let process_init_message state origin_user session_id body =
       let full_chat_users = origin_user::chat_users in
       print_system "You have been invited to a chat with: \n";
       List.map (fun user ->
-          printf_system "  * %s (%s)\n" user.user.username user.ip_address)
+          printf_username "  * @%s (%s)\n" user.user.username user.ip_address)
         full_chat_users |> ignore;
       print_system "Would you like to join the chat? [y/n]\n";
       read_yes_no () >>= fun join ->
@@ -245,7 +248,8 @@ let process_msg_messsage state from session_id body =
     let (outgoing_session, incoming_session) =
       assoc2 from chat_state.online_users |> unwrap in
     if incoming_session = session_id then (
-      printf_normal "\n%s:\n%s\n" from.user.username body;
+      printf_username "\n@%s: " from.user.username;
+      printf_message "%s\n" body;
       let new_online_users =
         (* This is a bug. Multiple useres might have the same current session IDs, we have to remove the right one. *)
         List.remove_assoc (outgoing_session, incoming_session)
@@ -315,7 +319,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Discover -> handle_discovery state
   | StartSession user_lst -> start_session state user_lst
   | QuitProgram ->
-    print_system "Saving keystore.\n";
+    print_system "Saving keystore...\n";
     Keypersist.save_keystore state.keys;
     print_normal ">>|\n"; Async.Std.exit(0)
   | Help ->
@@ -329,7 +333,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":quit -> Exits the program.\n"^
        ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
        ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
-       ":info -> Gets information about the current session."^
+       ":info -> Gets information about the current session.\n"^
        ":exitsession -> Exits the messaging session (but not the program). \n\n"^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
@@ -376,7 +380,7 @@ let rec main program_state =
   main new_state
 
 let rec prompt_password () =
-  print_system "Please enter your password:\n";
+  print_system "Please enter your password. If this is your first time, type in your desired password.\n";
   choose
     [
       choice (read_input ()) (fun str ->
@@ -401,7 +405,7 @@ let rec prompt_password () =
                  printf_system "%s" okay_message;
                  return (Keypersist.write_username new_user keys)))
           else
-            (print_system ("Welcome back " ^ user ^ ".\n");
+            (print_system ("Welcome back, " ^ user ^ ".\n");
              return keys)) >>=
        (fun keys ->
           Discovery.start_listening ();
