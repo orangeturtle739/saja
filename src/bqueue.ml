@@ -5,7 +5,7 @@ type 'a t = 'a Ivar.t Queue.t * 'a Queue.t
 let create () =
   (Queue.create (), Queue.create ())
 
-let rec take (to_fill, ready) =
+let take (to_fill, ready) =
   if Queue.is_empty ready then (
     let next = Ivar.create () in
     Queue.add next to_fill;
@@ -16,7 +16,7 @@ let add thing (to_fill, ready) =
   if Queue.is_empty to_fill then Queue.add thing ready
   else Ivar.fill (Queue.pop to_fill) thing
 
-let forget (to_fill, ready) = Queue.clear to_fill
+let forget (to_fill, _) = Queue.clear to_fill
 
 let recent_take thing =
   forget thing;

@@ -97,13 +97,13 @@ let handle_discovery state =
 
 let find_session chat_state target_username =
   chat_state.online_users |>
-  List.find (fun (_, {user={username; public_key=_}; ip_address}) -> target_username = username)
+  List.find (fun (_, {user={username; public_key=_}; ip_address=_}) -> target_username = username)
 
 let unwrap = function
   | Some thing -> thing
   | None -> failwith "Expected some"
 
-let full_key_to_private {n;e;d} = {n;d}
+let full_key_to_private {n;e=_;d} = {n;d}
 
 let send_message state msg_type message username =
   let chat_state = state.current_chat |> unwrap in
@@ -114,7 +114,7 @@ let send_message state msg_type message username =
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
     Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
-  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun s ->
+  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun _ ->
       let new_user_map = chat_state.online_users |>
                          List.remove_assoc (outgoing_session, incoming_session) in
       let new_chat_state =
@@ -204,7 +204,7 @@ let resolve_init_body state body =
   chat_users >>>| List.combine good_split >>>= fun user_data_lst ->
   let good_list =
     List.for_all
-      (fun ((gip, gfp), {ip_address; user={username; public_key}}) ->
+      (fun ((gip, gfp), {ip_address; user={username=_; public_key}}) ->
          gip = ip_address && gfp = (Crypto.fingerprint public_key))
       user_data_lst
   in
@@ -268,7 +268,7 @@ let process_msg_messsage state session_id from body =
              }
     ) else failwith "failwith bad session ID, I should probably do something better here"
 
-let parse_message state msg =
+let parse_message msg =
   let split = Str.bounded_split (Str.regexp "\n") msg 3 in
   match split with
   | session_id::msg_type::body::[] -> Some (session_id, msg_type, body)
@@ -299,7 +299,7 @@ let handle_received_message state addr str =
           public_key = Keypersist.retrieve_key username state.keys;
         };
     } in
-  match parse_message state decrypted_message with
+  match parse_message decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state origin_user session_id body
   | Some (session_id, msg_type, body) when msg_type = msg_str ->
@@ -401,7 +401,7 @@ let rec prompt_password () =
            (print_system "Generating a fresh key pair.\n";
             let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
          else return keys) >>=
-       (fun keys -> 
+       (fun keys ->
           let user = Keypersist.retrieve_username keys in
           if user = "" then
             (print_system "Messaging is more fun when people know your name. What's your name?\n";
@@ -451,5 +451,5 @@ let _ =
   let _ = listen chat_port handle_incoming_message in
   let _ = prompt_password() >>| (fun init_state -> main init_state) in
   let _ = Signal.handle [Signal.of_string "sigint"]
-      (fun _ -> Bqueue.add () handler_buf) in
+      ~f:(fun _ -> Bqueue.add () handler_buf) in
   let _ = Scheduler.go() in ()
