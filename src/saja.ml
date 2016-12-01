@@ -53,7 +53,7 @@ let rec process_users state =
         (printf_system "Discovered @%s at %s\n" username ip_address; return true) else
       if Keypersist.user_stored username state.keys then
         (print_system "*******************************\n";
-         printf_system "Warning! There is something fishy about the key for @%s\n" username;
+         printf_system "\nWarning! There is something fishy about the key for @%s\n" username;
          print_system "The key stored in your keychain has a different fingerprint than\n";
          print_system "the key received:\n";
          printf_system "Keychain: %s\n"
@@ -62,7 +62,7 @@ let rec process_users state =
            (Crypto.fingerprint public_key);
          print_system "Would you like to reject the received key? [y/n]\n";
          read_yes_no () >>| not) else
-        (print_system "*******************************";
+        (print_system "*******************************\n";
          printf_system "Warning! There is no key in your keychain for @%s\n" username;
          printf_system "Fingerprint: %s\n"
            (Crypto.fingerprint public_key);

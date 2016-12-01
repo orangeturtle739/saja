@@ -2,6 +2,11 @@ open Printf
 open Async.Std
 open Data
 
+let white = "\x1b[0m"
+let red = "\x1b[31m"
+let yellow = "\x1b[33m"
+let blue ="\x1b[0m"
+
 let stdin : Reader.t = Lazy.force Reader.stdin
 
 let buf = Bqueue.create ()
@@ -21,13 +26,16 @@ let read_input () : string Deferred.t =
   Bqueue.recent_take buf
 
 let print_normal s =
-  printf "%s" ("\x1b[0m"^s^"\x1b[0m")
+  printf "%s" (white^s^white)
 
 let print_error s =
-  printf "%s" ("\x1b[31m"^s^"\x1b[0m")
+  printf "%s" (red^s^white)
 
 let print_system s =
-  printf "%s" ("\x1b[33m"^s^"\x1b[0m")
+  printf "%s" (yellow^s^white)
+
+let print_username s =
+  printf "%s" (blue^s^white)
 
 let printf_system format = ksprintf print_system format
 let printf_error format = ksprintf print_error format
