@@ -4,11 +4,12 @@ open Console
 open Async.Std
 open Keypersist
 
-
+(* The port to do all message sending on *)
 let chat_port = 12999
-let init_str = "init"
-let msg_str = "msg"
 let found = ref []
+
+let message_buf = Bqueue.create ()
+let handler_buf = Bqueue.create ()
 
 let null_key = {
   full_signing_key={n="0";e="0";d="0"};
@@ -105,11 +106,11 @@ let unwrap = function
 
 let full_key_to_private {n;e=_;d} = {n;d}
 
-let send_message state msg_type message username =
+let send_message state message_body username =
   let chat_state = state.current_chat |> unwrap in
   let ((outgoing_session, incoming_session), online_user) = find_session chat_state username in
   let next_session = Crypto.advance outgoing_session in
-  let full_message = outgoing_session^"\n"^msg_type^"\n"^message in
+  let full_message = Message.create outgoing_session message_body |> Message.to_string in
   let key = Keypersist.retrieve_key username state.keys in
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
@@ -120,25 +121,25 @@ let send_message state msg_type message username =
       let new_chat_state =
         {
           online_users = ((next_session, incoming_session), online_user)::new_user_map;
-          messages = (username, message)::chat_state.messages
+          messages = (username, "I REALLY NEED TO FIX THIS")::chat_state.messages
         } in
       {state with current_chat = Some new_chat_state}
     )
 
-let send_group_messages state msg_type message_list =
+let send_group_messages state message_body_list =
   let rec send_to_users state = function
     | [] -> return state
-    | (user, message)::t ->
-      send_message state msg_type message user >>= (fun next_state ->
+    | (user, message_body)::t ->
+      send_message state message_body user >>= (fun next_state ->
           send_to_users next_state t) in
   let username_list =
     state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |>
     snd |> List.map (fun online_user -> online_user.user.username) in
-  send_to_users state (List.combine username_list message_list)
+  send_to_users state (List.combine username_list message_body_list)
 
-let send_group_message state msg_type message =
+let send_group_message state message_body =
   state.current_chat |> unwrap |> (fun x -> x.online_users) |>
-  List.map (fun _ -> message) |> send_group_messages state msg_type
+  List.map (fun _ -> message_body) |> send_group_messages state
 
 let (>>>=) m f = match m with
   | Some thing -> f thing
@@ -176,27 +177,19 @@ let start_session state username_list =
     let ip_list = List.map (fun online_user -> online_user.ip_address) users in
     let hash_list = List.map (fun online_user ->
         Crypto.fingerprint online_user.user.public_key) users in
-    let init_msg = List.rev_map2 (fun a b -> a^" "^b) ip_list hash_list |>
-                   String.concat "\n" in
+    let ip_fp_list = List.combine ip_list hash_list in
     let new_state = {state with current_chat = Some chat} in
-    send_group_message new_state init_str init_msg
+    send_group_message new_state (Message.Init ip_fp_list)
   | None -> return state
-
-let message_buf = Bqueue.create ()
-let handler_buf = Bqueue.create ()
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
   Bqueue.add (addr, str) message_buf
 
 let resolve_init_body state body =
-  let split = Str.split (Str.regexp "\n") body |>
-              List.map (Str.split (Str.regexp " ")) |> (List.map (function
-      | ip::fingerprint::[] -> (ip, fingerprint)
-      | _ -> ("", ""))) in
   let my_fingerprint =
     Crypto.fingerprint_f (Keypersist.retrieve_user_key state.keys) in
-  let good_split = List.filter (fun (_, fp) -> fp <> my_fingerprint) split in
+  let good_split = List.filter (fun (_, fp) -> fp <> my_fingerprint) body in
   let chat_users =
     List.map (fun (ip,_) ->
         List.find (fun (_,rip) -> ip=rip) state.user_ips) good_split |>
@@ -245,7 +238,7 @@ let rec assoc2 thing = function
   | (value, key)::_ when key=thing -> Some value
   | _::t -> assoc2 thing t
 
-let process_msg_messsage state session_id from body =
+let process_msg_messsage state from session_id body =
   match state.current_chat with
   | None -> return state
   | Some chat_state ->
@@ -269,12 +262,6 @@ let process_msg_messsage state session_id from body =
              }
     ) else failwith "failwith bad session ID, I should probably do something better here"
 
-let parse_message msg =
-  let split = Str.bounded_split (Str.regexp "\n") msg 3 in
-  match split with
-  | session_id::msg_type::body::[] -> Some (session_id, msg_type, body)
-  | _ -> None
-
 let decrypt_message state str =
   let public_key_map = Keypersist.retrieve_keys state.keys in
   let public_signing_keys = List.split public_key_map |> snd |>
@@ -289,6 +276,12 @@ let decrypt_message state str =
   (* printf_system "Received: %s\nFrom: %s\n" decrypted username; *)
   (username, decrypted)
 
+let process_message state origin_user message =
+  let session_id = (Message.session_id message) in
+  match Message.body message with
+  | Message.Msg body -> process_msg_messsage state origin_user session_id body
+  | Message.Init body -> process_init_message state origin_user session_id body
+
 let handle_received_message state addr str =
   decrypt_message state str >>>| fun (username, decrypted_message) ->
   let origin_user =
@@ -300,12 +293,9 @@ let handle_received_message state addr str =
           public_key = Keypersist.retrieve_key username state.keys;
         };
     } in
-  match parse_message decrypted_message with
-  | Some (session_id, msg_type, body) when msg_type = init_str ->
-    process_init_message state origin_user session_id body
-  | Some (session_id, msg_type, body) when msg_type = msg_str ->
-    process_msg_messsage state session_id origin_user body
-  | _ -> return state
+  match Message.from_string decrypted_message with
+  | Some message -> process_message state origin_user message
+  | None -> return state
 
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
@@ -316,7 +306,7 @@ let handle_send_message state msg =
   if state.current_chat = None then (
     print_system "Can't send message because you are not in a chat.\n";
     return state) else
-    send_group_message state msg_str msg
+    send_group_message state (Message.Msg msg)
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
