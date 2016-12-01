@@ -254,6 +254,7 @@ let process_msg_messsage state session_id from body =
     if incoming_session = session_id then (
       printf_normal "\n%s:\n%s\n" from.user.username body;
       let new_online_users =
+        (* This is a bug. Multiple useres might have the same current session IDs, we have to remove the right one. *)
         List.remove_assoc (outgoing_session, incoming_session)
           chat_state.online_users in
       let new_chat_state =
