@@ -1,5 +1,6 @@
 open Cryptokit
 open Data
+open Maybe
 
 (* Use urandom: http://www.2uo.de/myths-about-urandom/ *)
 let rand = Cryptokit.Random.device_rng "/dev/urandom"
@@ -148,11 +149,6 @@ let encrypt (pub_e_key:public_key) (pri_s_key:private_key) (message:string) =
   let result = payload^signature in
   transform_string (Base64.encode_multiline ()) result
 
-(* Bind because OCaml does not have it like Haskell *)
-let (>>=) x f = match x with
-  | None -> None
-  | Some x -> f x
-
 (* Tries to decrypt a signed message and verify the signature. If the signature
  * is valid, decrypts the message using the private key.
  * returns: [None] if the signature was not valid, and
@@ -164,7 +160,7 @@ let try_decrypt public_key private_key data =
       String.sub decoded 0 (String.length decoded - rsa_block_size) in
     let signature = String.sub decoded
         (String.length decoded - rsa_block_size) rsa_block_size in
-    rsa_verify public_key message signature >>= fun message ->
+    rsa_verify public_key message signature >>>= fun message ->
     let encrypted_session_key = String.sub message 0 rsa_block_size in
     let iv =
       String.sub message rsa_block_size aes_block_size in

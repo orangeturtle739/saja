@@ -3,6 +3,7 @@ open Msgtransport
 open Console
 open Async.Std
 open Keypersist
+open Maybe
 
 (* The port to do all message sending on *)
 let chat_port = 12999
@@ -14,11 +15,6 @@ let handler_buf = Bqueue.create ()
 let null_key = {
   full_signing_key={n="0";e="0";d="0"};
   full_encryption_key={n="0";e="0";d="0"}
-}
-
-type chat_state = {
-  online_users: ((session_id * session_id) * online_user) list;
-  messages: (username * message) list
 }
 
 (* [action] represents an action taken. *)
@@ -38,7 +34,7 @@ type action =
 type program_state = {
   keys: Keypersist.t;
   user_ips: (username * ip_address) list;
-  current_chat: chat_state option;
+  current_chat: Chat.t option;
 }
 
 let transmit_keys state ip =
@@ -99,56 +95,22 @@ let handle_discovery state =
       else
         (print_system "Error sending broadcast.\n"; return state))
 
-let find_session chat_state target_username =
-  chat_state.online_users |>
-  List.find (fun (_, {user={username; public_key=_}; ip_address=_}) -> target_username = username)
-
-let unwrap = function
-  | Some thing -> thing
-  | None -> failwith "Expected some"
-
 let full_key_to_private {n;e=_;d} = {n;d}
 
-let send_message state message_body username =
-  let chat_state = state.current_chat |> unwrap in
-  let ((outgoing_session, incoming_session), online_user) = find_session chat_state username in
-  let next_session = Crypto.advance outgoing_session in
-  let full_message = Message.create outgoing_session message_body |> Message.to_string in
+let send_message state session_id username ip_address message_body =
+  let full_message = Message.create session_id message_body |>
+                     Message.to_string in
   let key = Keypersist.retrieve_key username state.keys in
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
-    Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
-  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun _ ->
-      let new_user_map = chat_state.online_users |>
-                         List.remove_assoc (outgoing_session, incoming_session) in
-      let new_chat_state =
-        {
-          online_users = ((next_session, incoming_session), online_user)::new_user_map;
-          messages = (username, "I REALLY NEED TO FIX THIS")::chat_state.messages
-        } in
-      {state with current_chat = Some new_chat_state}
-    )
+    Crypto.encrypt key.encryption_key
+      (signing.full_signing_key |> full_key_to_private) full_message in
+  Msgtransport.send_msg ip_address chat_port encr_message
 
-let send_group_messages state message_body_list =
-  let rec send_to_users state = function
-    | [] -> return state
-    | (user, message_body)::t ->
-      send_message state message_body user >>= (fun next_state ->
-          send_to_users next_state t) in
-  let username_list =
-    state.current_chat |> unwrap |> (fun x -> x.online_users) |> List.split |>
-    snd |> List.map (fun online_user -> online_user.user.username) in
-  send_to_users state (List.combine username_list message_body_list)
-
-let send_group_message state message_body =
-  state.current_chat |> unwrap |> (fun x -> x.online_users) |>
-  List.map (fun _ -> message_body) |> send_group_messages state
-
-let (>>>=) m f = match m with
-  | Some thing -> f thing
-  | None -> None
-let (>>>|) m f =
-  m >>>= (fun thing -> Some (f thing))
+let send_group_message state message_body dest_spec =
+  List.map (fun (session_id, username, ip) ->
+      send_message state session_id username ip message_body) dest_spec |>
+  Deferred.all >>| List.for_all (fun x -> x)
 
 let resolve_user state username =
   (if List.mem_assoc username state.user_ips then
@@ -162,28 +124,18 @@ let resolve_user state username =
     ip_address = ip
   }
 
-
-let rec resolve_users state = function
-  | [] -> Some []
-  | h::t -> resolve_user state h >>>= fun resolved ->
-    resolve_users state t >>>| fun rt ->
-    resolved::rt
+let resolve_users state users = map_m (resolve_user state) users
 
 let start_session state username_list =
   match resolve_users state username_list with
   | Some users ->
-    let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
-    let chat = {
-      online_users = List.combine (List.combine initial_ids initial_ids) users;
-      messages = []
-    } in
-    let ip_list = List.map (fun online_user -> online_user.ip_address) users in
-    let hash_list = List.map (fun online_user ->
-        Crypto.fingerprint online_user.user.public_key) users in
-    let ip_fp_list = List.combine ip_list hash_list in
+    let (init_body, chat, dest_spec) = Chat.create users |>
+                                       Chat.send_init (Keypersist.retrieve_username state.keys) in
     let new_state = {state with current_chat = Some chat} in
-    send_group_message new_state (Message.Init ip_fp_list)
-  | None -> return state
+    send_group_message new_state init_body dest_spec >>= fun worked ->
+    if worked then (print_system "Sent invites."; return new_state)
+    else (print_system "Failed to start chat."; return state)
+  | None -> print_system "Unable to resolve usernames"; return state
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
@@ -220,51 +172,30 @@ let process_init_message state origin_user session_id body =
       read_yes_no () >>= fun join ->
       if join then (
         print_system "Joining chat.\n";
-        return
+        let joined_state =
           {
             state with
-            current_chat= Some
-                {
-                  online_users =
-                    List.combine (List.map (fun _ ->
-                        (session_id, Crypto.advance session_id))
-                        full_chat_users) full_chat_users;
-                  messages = [];
-                }
-          }
+            current_chat = Some (Chat.join session_id full_chat_users)
+          } in
+        (* TODO (jng55): send message saying that he joined *)
+        return joined_state
       ) else return state
     | None -> print_system "Ignoring invitation.\n";
       return state )
 
-let rec assoc2 thing = function
-  | [] -> None
-  | (value, key)::_ when key=thing -> Some value
-  | _::t -> assoc2 thing t
-
 let process_msg_messsage state from session_id body =
-  match state.current_chat with
+  let received = state.current_chat >>>=
+    Chat.receive_msg from session_id body in
+  match received with
   | None -> return state
   | Some chat_state ->
-    let (outgoing_session, incoming_session) =
-      assoc2 from chat_state.online_users |> unwrap in
-    if incoming_session = session_id then (
-      printf_username "\n@%s: " from.user.username;
-      printf_message "%s\n" body;
-      let new_online_users =
-        (* This is a bug. Multiple useres might have the same current session IDs, we have to remove the right one. *)
-        List.remove_assoc (outgoing_session, incoming_session)
-          chat_state.online_users in
-      let new_chat_state =
-        {
-          online_users =
-            ((outgoing_session,
-              Crypto.advance incoming_session), from)::new_online_users;
-          messages = (from.user.username, body)::chat_state.messages;
-        } in
-      return { state with
-               current_chat = Some new_chat_state;
-             }
-    ) else failwith "failwith bad session ID, I should probably do something better here"
+    printf_username "\n@%s: " from.user.username;
+    printf_message "%s\n" body;
+    return
+      {
+        state with
+        current_chat = Some chat_state;
+      }
 
 let decrypt_message state str =
   let public_key_map = Keypersist.retrieve_keys state.keys in
@@ -307,10 +238,15 @@ let handle_received_message_ignore state addr str =
   | None -> return state
 
 let handle_send_message state msg =
-  if state.current_chat = None then (
-    print_system "Can't send message because you are not in a chat.\n";
-    return state) else
-    send_group_message state (Message.Msg msg)
+  match state.current_chat with
+  | None -> print_system "Can't send message because you are not in a chat.\n";
+    return state
+  | Some chat_state ->
+    let (new_chat, dest_spec) =
+      Chat.send_msg (Keypersist.retrieve_username state.keys) msg chat_state in
+    send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
+    if not worked then print_error "Unable to send message" else ();
+    return {state with current_chat = Some new_chat}
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)

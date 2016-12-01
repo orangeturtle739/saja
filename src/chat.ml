@@ -41,10 +41,19 @@ let receive_msg from session_id msg state =
   }
 
 let send_msg my_name msg state =
-  let id_ip_list = List.map (fun ({user=_; ip_address}, (outgoing, _)) ->
-      (ip_address, outgoing)) state.online_users in
+  let id_ip_list = List.map (fun ({user={username; public_key=_}; ip_address}, (outgoing, _)) ->
+      (ip_address, username, outgoing)) state.online_users in
   ({
     online_users = List.map (fun (user, (outgoing, incoming)) ->
         (user, (Crypto.advance outgoing, incoming))) state.online_users;
     messages = (my_name, msg)::state.messages;
   }, id_ip_list)
+
+let send_init my_name state =
+  let users = state.online_users |> List.split |> fst in
+  let ip_list = List.map (fun online_user -> online_user.ip_address) users in
+  let hash_list = List.map (fun online_user ->
+      Crypto.fingerprint online_user.user.public_key) users in
+  let ip_fp_list = List.combine ip_list hash_list in
+  let (new_state, dest_spec) = send_msg my_name "init" state in
+  (Message.Init ip_fp_list, new_state, dest_spec)

@@ -1,3 +1,4 @@
+(* Bind because OCaml does not have it like Haskell *)
 let (>>>=) x f = match x with
   | Some thing -> f thing
   | None -> None
