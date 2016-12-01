@@ -401,13 +401,17 @@ let rec prompt_password () =
            (print_system "Generating a fresh key pair.\n";
             let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
          else return keys) >>=
-       (fun keys -> if Keypersist.retrieve_username keys = "" then
-           (print_system "Messaging is more fun when people know your name. What's your name?\n";
+       (fun keys -> 
+          let user = Keypersist.retrieve_username keys in
+          if user = "" then
+            (print_system "Messaging is more fun when people know your name. What's your name?\n";
             read_input() >>= (fun new_user ->
-                let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
-                printf_system "%s" okay_message;
-                return (Keypersist.write_username new_user keys)))
-         else (return keys)) >>=
+              let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
+              printf_system "%s" okay_message;
+              return (Keypersist.write_username new_user keys)))
+          else
+            (print_system ("Welcome back " ^ user ^ ".\n");
+            return keys)) >>=
        (fun keys ->
           Discovery.start_listening ();
           let user_key = Keypersist.retrieve_user_key keys in
