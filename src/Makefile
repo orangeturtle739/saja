@@ -7,12 +7,12 @@ test:
 
 clean:
 	ocamlbuild -clean
-amit:
-	corebuild -pkgs oUnit,async,yojson broadcast.byte
+udp:
+	corebuild -pkgs oUnit,async,yojson broadcast_test.byte
 tcp:
-	corebuild -pkgs core,async msgtransport.byte
+	corebuild -pkgs core,async msgtransport_test.byte
 discovery:
-	corebuild -pkgs core,async,cryptokit,scrypt discovery.byte
+	corebuild -pkgs core,async,cryptokit,scrypt discovery_test.byte
 logo:
 	./logo.sh
 format:

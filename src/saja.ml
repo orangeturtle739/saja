@@ -97,24 +97,24 @@ let handle_discovery state =
 
 let find_session chat_state target_username =
   chat_state.online_users |>
-  List.find (fun (_, {user={username; public_key=_}; ip_address}) -> target_username = username)
+  List.find (fun (_, {user={username; public_key=_}; ip_address=_}) -> target_username = username)
 
 let unwrap = function
   | Some thing -> thing
   | None -> failwith "Expected some"
 
-let full_key_to_private {n;e;d} = {n;d}
+let full_key_to_private {n;e=_;d} = {n;d}
 
 let send_message state msg_type message username =
   let chat_state = state.current_chat |> unwrap in
   let ((outgoing_session, incoming_session), online_user) = find_session chat_state username in
   let next_session = Crypto.advance outgoing_session in
-  let full_message = next_session^"\n"^msg_type^"\n"^message in
+  let full_message = outgoing_session^"\n"^msg_type^"\n"^message in
   let key = Keypersist.retrieve_key username state.keys in
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
     Crypto.encrypt key.encryption_key (signing.full_signing_key |> full_key_to_private) full_message in
-  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun s ->
+  Msgtransport.send_msg online_user.ip_address chat_port encr_message >>| (fun _ ->
       let new_user_map = chat_state.online_users |>
                          List.remove_assoc (outgoing_session, incoming_session) in
       let new_chat_state =
@@ -183,6 +183,7 @@ let start_session state username_list =
   | None -> return state
 
 let message_buf = Bqueue.create ()
+let handler_buf = Bqueue.create ()
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
@@ -203,7 +204,7 @@ let resolve_init_body state body =
   chat_users >>>| List.combine good_split >>>= fun user_data_lst ->
   let good_list =
     List.for_all
-      (fun ((gip, gfp), {ip_address; user={username; public_key}}) ->
+      (fun ((gip, gfp), {ip_address; user={username=_; public_key}}) ->
          gip = ip_address && gfp = (Crypto.fingerprint public_key))
       user_data_lst
   in
@@ -229,8 +230,9 @@ let process_init_message state origin_user session_id body =
             current_chat= Some
                 {
                   online_users =
-                    List.combine (List.map (fun _ -> (session_id, session_id))
-                                    full_chat_users) full_chat_users;
+                    List.combine (List.map (fun _ ->
+                        (session_id, Crypto.advance session_id))
+                        full_chat_users) full_chat_users;
                   messages = [];
                 }
           }
@@ -250,8 +252,9 @@ let process_msg_messsage state session_id from body =
     let (outgoing_session, incoming_session) =
       assoc2 from chat_state.online_users |> unwrap in
     if incoming_session = session_id then (
-      printf_normal "%s:\n%s" from.user.username body;
+      printf_normal "\n%s:\n%s\n" from.user.username body;
       let new_online_users =
+        (* This is a bug. Multiple useres might have the same current session IDs, we have to remove the right one. *)
         List.remove_assoc (outgoing_session, incoming_session)
           chat_state.online_users in
       let new_chat_state =
@@ -266,7 +269,7 @@ let process_msg_messsage state session_id from body =
              }
     ) else failwith "failwith bad session ID, I should probably do something better here"
 
-let parse_message state msg =
+let parse_message msg =
   let split = Str.bounded_split (Str.regexp "\n") msg 3 in
   match split with
   | session_id::msg_type::body::[] -> Some (session_id, msg_type, body)
@@ -283,7 +286,7 @@ let decrypt_message state str =
   let signing_key_to_username_map = List.combine public_signing_keys
       (List.split public_key_map |> fst) in
   let username = List.assoc signing_key signing_key_to_username_map in
-  printf_system "Received: %s\nFrom: %s\n" decrypted username;
+  (* printf_system "Received: %s\nFrom: %s\n" decrypted username; *)
   (username, decrypted)
 
 let handle_received_message state addr str =
@@ -297,7 +300,7 @@ let handle_received_message state addr str =
           public_key = Keypersist.retrieve_key username state.keys;
         };
     } in
-  match parse_message state decrypted_message with
+  match parse_message decrypted_message with
   | Some (session_id, msg_type, body) when msg_type = init_str ->
     process_init_message state origin_user session_id body
   | Some (session_id, msg_type, body) when msg_type = msg_str ->
@@ -321,7 +324,10 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   match command with
   | Discover -> handle_discovery state
   | StartSession user_lst -> start_session state user_lst
-  | QuitProgram -> print_normal ">>|\n"; Async.Std.exit(0)
+  | QuitProgram ->
+    print_system "Saving keystore.\n";
+    Keypersist.save_keystore state.keys;
+    print_normal ">>|\n"; Async.Std.exit(0)
   | Help ->
     print_system
       ("---------------\n"^
@@ -364,25 +370,77 @@ let rec main program_state =
     [
       choice (Bqueue.recent_take message_buf) (fun (addr, str) ->
           `ReadMsg (addr, str));
-      choice (Console.read_input ()) (fun str ->
-          `ReadConsole str)
+      choice (read_input ()) (fun str ->
+          `ReadConsole str);
+      choice (Bqueue.recent_take handler_buf) (fun () ->
+          `HandlerCalled)
     ] >>= fun pick ->
   (match pick with
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
-   | `ReadConsole s -> execute (action_of_string s) program_state)
+   | `ReadConsole s -> execute (action_of_string s) program_state
+   | `HandlerCalled ->
+     print_system "\nSaving keystore.\n";
+     Keypersist.save_keystore program_state.keys;
+     Async.Std.exit(0))
   >>= fun new_state ->
   main new_state
 
 let rec prompt_password () =
   print_system "Please enter your password:\n";
-  read_input() >>= (fun password ->
-    try
-      return (Keypersist.load_keystore password)
-    with
-      Persistence.Bad_password ->
-        print_system "Incorrect password!\n";
-        prompt_password ()
-  )
+  choose
+    [
+      choice (read_input ()) (fun str ->
+          `ReadPass str);
+      choice (Bqueue.recent_take handler_buf) (fun () ->
+          `HandlerCalled)
+    ] >>= fun pick ->
+  match pick with
+  | `ReadPass password ->
+    (try
+       return (Keypersist.load_keystore password) >>=
+       (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
+           (print_system "Generating a fresh key pair.\n";
+            let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
+         else return keys) >>=
+       (fun keys ->
+          let user = Keypersist.retrieve_username keys in
+          if user = "" then
+            (print_system "Messaging is more fun when people know your name. What's your name?\n";
+             read_input() >>= (fun new_user ->
+                 let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
+                 printf_system "%s" okay_message;
+                 return (Keypersist.write_username new_user keys)))
+          else
+            (print_system ("Welcome back " ^ user ^ ".\n");
+             return keys)) >>=
+       (fun keys ->
+          Discovery.start_listening ();
+          let user_key = Keypersist.retrieve_user_key keys in
+          Discovery.set_key {
+            username = Keypersist.retrieve_username keys;
+            public_key = {
+              encryption_key = {
+                n = user_key.full_encryption_key.n;
+                e = user_key.full_encryption_key.e
+              };
+              signing_key = {
+                n = user_key.full_signing_key.n;
+                e = user_key.full_signing_key.e
+              }
+            }
+          };
+          return keys) >>| (fun keys -> {
+             keys=keys;
+             user_ips = [];
+             current_chat = None;
+           })
+     with
+       Persistence.Bad_password ->
+       print_system "Incorrect password!\n";
+       prompt_password ())
+  | `HandlerCalled ->
+    print_system "\nBye!\n";
+    Async.Std.exit(0)
 
 let _ =
   print_normal
@@ -392,40 +450,7 @@ let _ =
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
-  let _ = prompt_password() >>=
-    (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
-        (print_system "Generating a fresh key pair.\n";
-         let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
-      else return keys) >>=
-    (fun keys -> if Keypersist.retrieve_username keys = "" then
-        (print_system "Messaging is more fun when people know your name. What's your name?\n";
-         read_input() >>= (fun new_user ->
-             let okay_message = "Alrighty! We'll call you " ^ new_user ^ ".\n" in
-             printf_system "%s" okay_message;
-             return (Keypersist.write_username new_user keys)))
-      else (return keys)) >>=
-    (fun keys ->
-       Discovery.start_listening ();
-       let user_key = Keypersist.retrieve_user_key keys in
-       Discovery.set_key {
-         username = Keypersist.retrieve_username keys;
-         public_key = {
-           encryption_key = {
-             n = user_key.full_encryption_key.n;
-             e = user_key.full_encryption_key.e
-           };
-           signing_key = {
-             n = user_key.full_signing_key.n;
-             e = user_key.full_signing_key.e
-           }
-         }
-       };
-       return keys) >>| (fun keys -> main
-                            {
-                              keys=keys;
-                              user_ips = [];
-                              current_chat = None;
-                            }) in
+  let _ = prompt_password() >>| (fun init_state -> main init_state) in
   let _ = Signal.handle [Signal.of_string "sigint"]
-      (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
+      ~f:(fun _ -> Bqueue.add () handler_buf) in
   let _ = Scheduler.go() in ()

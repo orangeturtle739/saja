@@ -28,6 +28,8 @@ let read_input () : string Deferred.t =
 let print_normal s =
   printf "%s" (white^s^white)
 
+let print_message _ = failwith "AMIT IMPLEMENT ME. WE NEED MORE COLORS"
+
 let print_error s =
   printf "%s" (red^s^white)
 

@@ -20,19 +20,8 @@ let listen port callback =
                        Unix.Inet_addr.to_string in
         callback str_addr contents |> return) in
   server |> try_with >>| (function
-      | Core.Std.Ok a    -> ()
+      | Core.Std.Ok _    -> ()
       | Core.Std.Error _ -> let tmsg = trace port in
         print_error tmsg;
         print_error "\nSaja is exiting.\n";
         ignore (Async.Std.exit(0)))
-
-let tcp_demo () =
-  let a = listen 3654 (fun addr str -> printf "Received: %s\nFound: %s" str addr) in
-  let _ = after (Core.Std.sec 1.) >>= fun _ ->
-    send_msg "localhost" 3654
-      "556688 Crpytic Message from Jacob Glueck!" >>| (fun suc ->
-        if suc then print_endline "Sent" else print_endline "Error sending") in
-  Scheduler.go ()
-
-(* Test code remove before submission *)
-(* let _ = tcp_demo () *)
