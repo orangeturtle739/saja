@@ -339,7 +339,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":quit -> Exits the program.\n"^
        ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
        ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
-       ":info -> Gets information about the current session."^
+       ":info -> Gets information about the current session.\n"^
        ":exitsession -> Exits the messaging session (but not the program). \n\n"^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
