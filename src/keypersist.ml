@@ -109,7 +109,7 @@ let load_keystore (password: string) =
       };
       password = password
     } in
-    save_keystore empty_store;
+    (*save_keystore empty_store;*)
     empty_store
 
 (* [verify_key name key] is [true] if public key [key] is associated with
@@ -126,21 +126,21 @@ let verify_key (user: username) (key: public_key_pair) (store: t) =
 let write_key (user: username) (key: public_key_pair) (store: t) =
   let new_store =
     {store with outside_keys = Store.add user key store.outside_keys}
-  in save_keystore new_store; new_store
+  in (*save_keystore new_store;*) new_store
 
 (* [write_username user store] updates the username in [store] to
  * [user]. *)
 let write_username (user: username) (store: t) =
   let new_store =
     {store with user = user}
-  in save_keystore new_store; new_store
+  in (*save_keystore new_store;*) new_store
 
 (* [write_user_key key store] is [store] updated with the new user
  * [key]. *)
 let write_user_key (key: full_key_pair) (store: t) =
   let new_store =
     {store with user_key = key}
-  in save_keystore new_store; new_store
+  in (*save_keystore new_store;*) new_store
 
 (* [user_stored user store] is [true] if [user] is stored in
  * the [store]. *)

@@ -183,6 +183,7 @@ let start_session state username_list =
   | None -> return state
 
 let message_buf = Bqueue.create ()
+let handler_buf = Bqueue.create ()
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
@@ -321,7 +322,10 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   match command with
   | Discover -> handle_discovery state
   | StartSession user_lst -> start_session state user_lst
-  | QuitProgram -> print_normal ">>|\n"; Async.Std.exit(0)
+  | QuitProgram ->
+    print_system "Saving keystore.\n";
+    Keypersist.save_keystore state.keys;
+    print_normal ">>|\n"; Async.Std.exit(0)
   | Help ->
     print_system
       ("---------------\n"^
@@ -364,36 +368,35 @@ let rec main program_state =
     [
       choice (Bqueue.recent_take message_buf) (fun (addr, str) ->
           `ReadMsg (addr, str));
-      choice (Console.read_input ()) (fun str ->
-          `ReadConsole str)
+      choice (read_input ()) (fun str ->
+          `ReadConsole str);
+      choice (Bqueue.recent_take handler_buf) (fun () ->
+          `HandlerCalled)
     ] >>= fun pick ->
   (match pick with
-   | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
-   | `ReadConsole s -> execute (action_of_string s) program_state)
+  | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
+  | `ReadConsole s -> execute (action_of_string s) program_state
+  | `HandlerCalled ->
+    print_system "\nSaving keystore.\n";
+    Keypersist.save_keystore program_state.keys;
+    Async.Std.exit(0))
   >>= fun new_state ->
   main new_state
 
 let rec prompt_password () =
   print_system "Please enter your password:\n";
-  read_input() >>= (fun password ->
-    try
-      return (Keypersist.load_keystore password)
-    with
-      Persistence.Bad_password ->
-        print_system "Incorrect password!\n";
-        prompt_password ()
-  )
-
-let _ =
-  print_normal
-    (Logo.program_name^"\n");
-  print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
-  print_system "Psst. You new around here? Type :help for help.\n";
-  (Discovery.bind_discovery
-     (fun online_user -> found := online_user::(!found)));
-  let _ = listen chat_port handle_incoming_message in
-  let _ = prompt_password() >>=
-    (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
+  choose
+    [
+      choice (read_input ()) (fun str ->
+          `ReadPass str);
+      choice (Bqueue.recent_take handler_buf) (fun () ->
+          `HandlerCalled)
+    ] >>= fun pick ->
+  match pick with
+  | `ReadPass password -> 
+    (try
+      return (Keypersist.load_keystore password) >>=
+      (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
         (print_system "Generating a fresh key pair.\n";
          let new_key = Crypto.gen_keys () in return (Keypersist.write_user_key new_key keys))
       else return keys) >>=
@@ -420,12 +423,28 @@ let _ =
            }
          }
        };
-       return keys) >>| (fun keys -> main
-                            {
+       return keys) >>| (fun keys -> {
                               keys=keys;
                               user_ips = [];
                               current_chat = None;
-                            }) in
+                            })
+    with
+      Persistence.Bad_password ->
+        print_system "Incorrect password!\n";
+        prompt_password ())
+  | `HandlerCalled ->
+    print_system "\nBye!\n";
+    Async.Std.exit(0)
+
+let _ =
+  print_normal
+    (Logo.program_name^"\n");
+  print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
+  print_system "Psst. You new around here? Type :help for help.\n";
+  (Discovery.bind_discovery
+     (fun online_user -> found := online_user::(!found)));
+  let _ = listen chat_port handle_incoming_message in
+  let _ = prompt_password() >>| (fun init_state -> main init_state) in
   let _ = Signal.handle [Signal.of_string "sigint"]
-      (fun _ -> print_system "\nBye!\n"; ignore (Async.Std.exit(0));) in
+      (fun _ -> Bqueue.add () handler_buf) in
   let _ = Scheduler.go() in ()
