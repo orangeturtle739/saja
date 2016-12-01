@@ -105,12 +105,10 @@ let send_message state session_id username ip_address message_body =
   let encr_message =
     Crypto.encrypt key.encryption_key
       (signing.full_signing_key |> full_key_to_private) full_message in
-  print_endline "About to send message";
-  print_endline ip_address;
   Msgtransport.send_msg ip_address chat_port encr_message
 
 let send_group_message state message_body dest_spec =
-  List.map (fun (username, ip, session_id) ->
+  List.map (fun (session_id, username, ip) ->
       send_message state session_id username ip message_body) dest_spec |>
   Deferred.all >>| List.for_all (fun x -> print_endline (if x then "you" else "foo"); x)
 

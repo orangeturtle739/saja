@@ -42,7 +42,7 @@ let receive_msg from session_id msg state =
 
 let send_msg my_name msg state =
   let id_ip_list = List.map (fun ({user={username; public_key=_}; ip_address}, (outgoing, _)) ->
-      (ip_address, username, outgoing)) state.online_users in
+      (outgoing, username, ip_address)) state.online_users in
   ({
     online_users = List.map (fun (user, (outgoing, incoming)) ->
         (user, (Crypto.advance outgoing, incoming))) state.online_users;
