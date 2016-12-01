@@ -129,8 +129,9 @@ let resolve_users state users = map_m (resolve_user state) users
 let start_session state username_list =
   match resolve_users state username_list with
   | Some users ->
-    let (init_body, chat, dest_spec) = Chat.create users |>
-                                       Chat.send_init (Keypersist.retrieve_username state.keys) in
+    let (init_body, chat, dest_spec) =
+      Chat.create users |>
+      Chat.send_init (Keypersist.retrieve_username state.keys) in
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_body dest_spec >>= fun worked ->
     if worked then (print_system "Sent invites."; return new_state)
@@ -160,28 +161,27 @@ let resolve_init_body state body =
 
 
 let process_init_message state origin_user session_id body =
-  if state.current_chat <> None then return state else (
-    match resolve_init_body state body with
-    | Some chat_users ->
-      let full_chat_users = origin_user::chat_users in
-      print_system "You have been invited to a chat with: \n";
-      List.map (fun user ->
-          printf_username "  * @%s (%s)\n" user.user.username user.ip_address)
-        full_chat_users |> ignore;
-      print_system "Would you like to join the chat? [y/n]\n";
-      read_yes_no () >>= fun join ->
-      if join then (
-        print_system "Joining chat.\n";
-        let joined_state =
-          {
-            state with
-            current_chat = Some (Chat.join session_id full_chat_users)
-          } in
-        (* TODO (jng55): send message saying that he joined *)
-        return joined_state
-      ) else return state
-    | None -> print_system "Ignoring invitation.\n";
-      return state )
+  match resolve_init_body state body with
+  | Some chat_users ->
+    let full_chat_users = origin_user::chat_users in
+    print_system "You have been invited to a chat with: \n";
+    List.map (fun user ->
+        printf_username "  * @%s (%s)\n" user.user.username user.ip_address)
+      full_chat_users |> ignore;
+    print_system "Would you like to join the chat? [y/n]\n";
+    read_yes_no () >>= fun join ->
+    if join then (
+      let my_name = Keypersist.retrieve_username state.keys in
+      let joining_message = my_name^" joined." in
+      let (chat, dest_spec) = Chat.join session_id full_chat_users |>
+                              Chat.send_msg my_name joining_message in
+      send_group_message
+        state (Message.Msg joining_message) dest_spec >>= fun worked ->
+      if not worked then (print_error "Unable to join chat"; return state)
+      else (print_system "Joined chat.\n";
+            return {state with current_chat = Some chat})
+    ) else return state
+  | None -> return state
 
 let process_msg_messsage state from session_id body =
   let received = state.current_chat >>>=
@@ -204,7 +204,8 @@ let decrypt_message state str =
   let decryption_key =
     (Keypersist.retrieve_user_key state.keys).full_encryption_key |>
     full_key_to_private in
-  Crypto.decrypt public_signing_keys decryption_key str >>>| fun (decrypted, signing_key) ->
+  Crypto.decrypt
+    public_signing_keys decryption_key str >>>| fun (decrypted, signing_key) ->
   let signing_key_to_username_map = List.combine public_signing_keys
       (List.split public_key_map |> fst) in
   let username = List.assoc signing_key signing_key_to_username_map in
