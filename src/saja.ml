@@ -252,7 +252,7 @@ let process_msg_messsage state session_id from body =
     let (outgoing_session, incoming_session) =
       assoc2 from chat_state.online_users |> unwrap in
     if incoming_session = session_id then (
-      printf_normal "%s:\n%s" from.user.username body;
+      printf_normal "\n%s:\n%s\n" from.user.username body;
       let new_online_users =
         List.remove_assoc (outgoing_session, incoming_session)
           chat_state.online_users in
