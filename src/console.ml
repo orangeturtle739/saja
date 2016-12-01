@@ -5,7 +5,7 @@ open Data
 let white = "\x1b[0m"
 let red = "\x1b[31m"
 let yellow = "\x1b[33m"
-let blue ="\x1b[0m"
+let blue ="\x1b[34m"
 
 let stdin : Reader.t = Lazy.force Reader.stdin
 
@@ -43,6 +43,7 @@ let printf_system format = ksprintf print_system format
 let printf_error format = ksprintf print_error format
 let printf_message format = ksprintf print_error format
 let printf_normal format = ksprintf print_normal format
+let printf_username format = ksprintf print_username format
 
 let rec read_yes_no () : bool Deferred.t =
 
