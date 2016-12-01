@@ -230,7 +230,8 @@ let process_init_message state origin_user session_id body =
             current_chat= Some
                 {
                   online_users =
-                    List.combine (List.map (fun _ -> (session_id, session_id))
+                    List.combine (List.map (fun _ ->
+                        (session_id, Crypto.advance session_id))
                                     full_chat_users) full_chat_users;
                   messages = [];
                 }
