@@ -109,7 +109,7 @@ let send_message state msg_type message username =
   let chat_state = state.current_chat |> unwrap in
   let ((outgoing_session, incoming_session), online_user) = find_session chat_state username in
   let next_session = Crypto.advance outgoing_session in
-  let full_message = next_session^"\n"^msg_type^"\n"^message in
+  let full_message = outgoing_session^"\n"^msg_type^"\n"^message in
   let key = Keypersist.retrieve_key username state.keys in
   let signing = Keypersist.retrieve_user_key state.keys in
   let encr_message =
@@ -393,7 +393,7 @@ let rec prompt_password () =
           `HandlerCalled)
     ] >>= fun pick ->
   match pick with
-  | `ReadPass password -> 
+  | `ReadPass password ->
     (try
       return (Keypersist.load_keystore password) >>=
       (fun keys -> if Keypersist.retrieve_user_key keys = null_key then
