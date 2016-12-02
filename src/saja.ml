@@ -231,7 +231,7 @@ let handle_received_message state addr str =
     } in
   match Message.from_string decrypted_message with
   | Some message -> process_message state origin_user message
-  | None -> return state
+  | None -> print_endline decrypted_message; print_endline "foo"; return state
 
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
