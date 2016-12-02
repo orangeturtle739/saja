@@ -406,7 +406,9 @@ let rec prompt_username keys =
       Async.Std.exit(0)
     end
   else
-    (print_system ("Welcome back, "); print_username(user ^ ".\n");
+    (print_system ("Welcome back, "); 
+    print_username(user);
+    print_system(".\n");
     return keys) >>=
     process_keys_to_init
 
