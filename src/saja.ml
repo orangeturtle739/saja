@@ -383,6 +383,7 @@ let rec prompt_username keys =
   let user = Keypersist.retrieve_username keys in
   if user = "" then
     begin
+    print_system "Messaging is more fun when people know your name. What's your name?\n";
     choose
       [
         choice (read_input ()) (fun str ->
@@ -430,9 +431,7 @@ let rec prompt_password () =
     (try
        return (Keypersist.load_keystore password) >>=
        check_for_user_key >>=
-       (fun key -> 
-       print_system "Messaging is more fun when people know your name. What's your name?\n";
-       prompt_username key)
+       prompt_username
      with
        Persistence.Bad_password ->
        print_error "Incorrect password!\n";
