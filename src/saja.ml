@@ -393,10 +393,14 @@ let rec prompt_username keys =
       ] >>= fun pick ->
     match pick with
     | `ReadUser usr ->
+      if not (String.contains usr ' ') then 
         let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
         printf_system "%s" okay_message;
         return (Keypersist.write_username usr keys) >>=
-        process_keys_to_init 
+        process_keys_to_init
+      else
+        (print_system "Usernames can not contain spaces.\n";
+        prompt_username keys)
     | `HandlerCalled ->
       print_system "\nBye!\n";
       Async.Std.exit(0)
