@@ -28,6 +28,7 @@ type action =
   | ExitSession
   | TransmitKeys of ip_address
   | ProcessUsers
+  | Fingerprint of username
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -270,6 +271,18 @@ let get_info state =
         printf_username "  * @%s (%s)\n" username ip) |>
     ignore
 
+let pawprint state = function
+  | (u,f)::_ -> print_system "Fingerprint "; print_username (u^": ");
+                print_normal (f^"\n"); return state
+  | _        -> return state
+
+
+let process_fingerprint state user : program_state Deferred.t =
+  if user = "" then (retrieve_username state.keys,
+    Crypto.fingerprint_f(retrieve_user_key state.keys))::[] |> pawprint state
+  else (user,
+    Crypto.fingerprint (retrieve_key user state.keys))::[]  |> pawprint state
+
 let safe_exit state =
   exit_session state >>= fun state ->
   print_system "Saving keystore...\n";
@@ -304,6 +317,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | ExitSession -> exit_session state
   | TransmitKeys ip -> transmit_keys state ip
   | ProcessUsers -> process_users state
+  | Fingerprint u -> process_fingerprint state u
 
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
@@ -317,6 +331,8 @@ let action_of_string (s: string) : action =
   | [":exitsession"] -> ExitSession
   | ":transmit"::[ip] -> TransmitKeys ip
   | ":startsession"::t -> StartSession t
+  | [":fingerprint"] -> Fingerprint ""
+  | ":fingerprint"::[u] -> Fingerprint u
   | _ -> SendMessage s
 
 let rec main program_state =

@@ -147,7 +147,7 @@ let write_user_key (key: full_key_pair) (store: t) =
 let user_stored (user: username) (store: t) =
   Store.mem user store.outside_keys
 
-(* [retrieve_key user store] is an the public key pair of [user] in
+(* [retrieve_key user store] is a public key pair of [user] in
  * [store]. *)
 let retrieve_key (user: username) (store: t) =
   try

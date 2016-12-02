@@ -12,6 +12,7 @@ type action =
   | ExitSession
   | TransmitKeys of ip_address
   | ProcessUsers
+  | Fingerprint of username
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
