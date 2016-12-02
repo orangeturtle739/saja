@@ -134,7 +134,7 @@ let start_session state username_list =
       Chat.send_init (Keypersist.retrieve_username state.keys) in
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_body dest_spec >>= fun worked ->
-    if worked then (print_system "Sent invites."; return new_state)
+    if worked then (print_system "Sent invites.\n"; return new_state)
     else (print_system "Failed to start chat."; return state)
   | None -> print_system "Unable to resolve usernames"; return state
 
@@ -257,7 +257,7 @@ let exit_session state =
     let exit_message =
       "@"^(Keypersist.retrieve_username state.keys)^" left the chat." in
     handle_send_message state exit_message >>= fun state ->
-    print_system "Exited chat.";
+    print_system "Exited chat.\n";
     return {state with current_chat = None}
 
 let get_info state =
