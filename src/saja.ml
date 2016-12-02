@@ -113,8 +113,8 @@ let send_group_message state message_body dest_spec =
   Deferred.all >>| List.for_all (fun x -> print_endline (if x then "you" else "foo"); x)
 
 let resolve_user state username =
-  (if List.mem_assoc username state.user_ips then
-     Some (List.assoc username state.user_ips) else None) >>>| fun ip ->
+  (if List.mem_assoc username state.user_ips then (print_endline ("resolved "^username);
+                                                   Some (List.assoc username state.user_ips)) else (print_endline ("resolved "^username); None)) >>>| fun ip ->
   {
     user =
       {
