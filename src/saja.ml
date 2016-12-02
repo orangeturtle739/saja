@@ -415,7 +415,7 @@ let rec prompt_password () =
 
 let _ =
   print_normal
-    (Logo.program_name^"\n");
+    ("\n"^Logo.program_name^"\n\n\n");
   print_system "Welcome to SAJA (Siddant, Alex, Jacob, Amit) version 1.0.0.\n";
   print_system "Psst. You new around here? Type :help for help.\n";
   (Discovery.bind_discovery
