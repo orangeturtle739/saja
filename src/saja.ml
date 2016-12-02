@@ -53,7 +53,7 @@ let rec process_users state =
          printf_system "at %s\n" ip_address; return true) else
       if Keypersist.user_stored username state.keys then
         (print_system "*******************************\n";
-         print_system "Warning! There is something fishy about the key for ";
+         print_error "Warning! There is something fishy about the key for ";
          printf_username "@%s\n" username;
          print_system "The key stored in your keychain has a different fingerprint than\n";
          print_system "the key received:\n";
@@ -64,7 +64,7 @@ let rec process_users state =
          print_system "Would you like to reject the received key? [y/n]\n";
          read_yes_no () >>| not) else
         (print_system "*******************************\n";
-         printf_system "Warning! There is no key in your keychain for @%s\n" username;
+         printf_error "Warning! There is no key in your keychain for @%s\n" username;
          printf_system "Fingerprint: %s\n"
            (Crypto.fingerprint public_key);
          print_system "You should verify the fingerprint in person before accepting this key\n";
@@ -137,7 +137,7 @@ let start_session state username_list =
     send_group_message new_state init_body dest_spec >>= fun worked ->
     if worked then (print_system "Sent invites.\n"; return new_state)
     else (print_system "Failed to start chat.\n"; return state)
-  | None -> print_system "Unable to resolve usernames.\n"; return state
+  | None -> print_error "Unable to resolve usernames.\n"; return state
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
@@ -241,7 +241,7 @@ let handle_received_message_ignore state addr str =
 
 let handle_send_message state msg =
   match state.current_chat with
-  | None -> print_system "Can't send message because you are not in a chat.\n";
+  | None -> print_error "Can't send message because you are not in a chat.\n";
     return state
   | Some chat_state ->
     let (new_chat, dest_spec) =
@@ -252,7 +252,7 @@ let handle_send_message state msg =
 
 let exit_session state =
   match state.current_chat with
-  | None -> print_system "Can't exit session because your are not in a session.\n";
+  | None -> print_error "Can't exit session because your are not in a session.\n";
     return state
   | Some _ ->
     let exit_message =
@@ -382,7 +382,7 @@ let rec prompt_password () =
                  printf_system "%s" okay_message;
                  return (Keypersist.write_username new_user keys)))
           else
-            (print_system ("Welcome back, " ^ user ^ ".\n");
+            (print_system ("Welcome back, "); print_username(user ^ ".\n");
              return keys)) >>=
        (fun keys ->
           Discovery.start_listening ();
@@ -407,7 +407,7 @@ let rec prompt_password () =
            })
      with
        Persistence.Bad_password ->
-       print_system "Incorrect password!\n";
+       print_error "Incorrect password!\n";
        prompt_password ())
   | `HandlerCalled ->
     print_system "\nBye!\n";
