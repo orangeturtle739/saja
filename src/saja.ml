@@ -110,11 +110,11 @@ let send_message state session_id username ip_address message_body =
 let send_group_message state message_body dest_spec =
   List.map (fun (session_id, username, ip) ->
       send_message state session_id username ip message_body) dest_spec |>
-  Deferred.all >>| List.for_all (fun x -> print_endline (if x then "you" else "foo"); x)
+  Deferred.all >>| List.for_all (fun x -> x)
 
 let resolve_user state username =
-  (if List.mem_assoc username state.user_ips then (print_endline ("resolved "^username);
-                                                   Some (List.assoc username state.user_ips)) else (print_endline ("resolved "^username); None)) >>>| fun ip ->
+  (if List.mem_assoc username state.user_ips then
+     Some (List.assoc username state.user_ips) else None) >>>| fun ip ->
   {
     user =
       {
@@ -231,7 +231,7 @@ let handle_received_message state addr str =
     } in
   match Message.from_string decrypted_message with
   | Some message -> process_message state origin_user message
-  | None -> print_endline decrypted_message; print_endline "foo"; return state
+  | None -> return state
 
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
