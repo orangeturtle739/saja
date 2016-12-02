@@ -135,8 +135,8 @@ let start_session state username_list =
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_body dest_spec >>= fun worked ->
     if worked then (print_system "Sent invites.\n"; return new_state)
-    else (print_system "Failed to start chat."; return state)
-  | None -> print_system "Unable to resolve usernames"; return state
+    else (print_system "Failed to start chat.\n"; return state)
+  | None -> print_system "Unable to resolve usernames.\n"; return state
 
 let handle_incoming_message addr str =
   (* printf_system "Received: %s\nFound: %s" str addr; *)
@@ -177,7 +177,7 @@ let process_init_message state origin_user session_id body =
                               Chat.send_msg my_name joining_message in
       send_group_message
         state (Message.Msg joining_message) dest_spec >>= fun worked ->
-      if not worked then (print_error "Unable to join chat"; return state)
+      if not worked then (print_error "Unable to join chat\n"; return state)
       else (print_system "Joined chat.\n";
             return {state with current_chat = Some chat})
     ) else return state
@@ -246,16 +246,16 @@ let handle_send_message state msg =
     let (new_chat, dest_spec) =
       Chat.send_msg (Keypersist.retrieve_username state.keys) msg chat_state in
     send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
-    if not worked then print_error "Unable to send message" else ();
+    if not worked then print_error "Unable to send message\n" else ();
     return {state with current_chat = Some new_chat}
 
 let exit_session state =
   match state.current_chat with
-  | None -> print_system "Can't exit session because your are not in a session.";
+  | None -> print_system "Can't exit session because your are not in a session.\n";
     return state
   | Some _ ->
     let exit_message =
-      "@"^(Keypersist.retrieve_username state.keys)^" left the chat." in
+      "@"^(Keypersist.retrieve_username state.keys)^" left the chat.\n" in
     handle_send_message state exit_message >>= fun state ->
     print_system "Exited chat.\n";
     return {state with current_chat = None}
