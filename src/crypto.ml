@@ -43,6 +43,7 @@ let to_full_key (key:RSA.key) =
     e = key.RSA.e |> to64_key;
     d = key.RSA.d |> to64_key;
   }
+
 (* Converts a Data.public_key to a cryptokit RSA key *)
 let from_public_key (key:public_key) =
   {
@@ -56,6 +57,7 @@ let from_public_key (key:public_key) =
     RSA.dq = "";
     RSA.qinv = "";
   }
+
 (* Converts a Data.private_key to a cryptokit RSA key *)
 let from_private_key (key:private_key) =
   {
@@ -69,6 +71,7 @@ let from_private_key (key:private_key) =
     RSA.dq = "";
     RSA.qinv = "";
   }
+
 (* represents: an AES encryption cipher, with a transform, an initialization
  * vector (iv), and a key. *)
 type aes_encryption_cipher = {
@@ -76,6 +79,7 @@ type aes_encryption_cipher = {
   key: string;
   cipher: transform;
 }
+
 (* Generates a random string of size [rsa_payload_size]. The first
  * [aes_key_length] bytes will be used as the AES session key. *)
 let gen_aes_key () = Random.string rand rsa_payload_size
@@ -95,14 +99,17 @@ let aes_encryption () =
     key;
     cipher;
   }
+
 (* Generates an AES decryption transform given the initialization vector and
  * key. *)
 let aes_decryption iv key =
   Cipher.aes ~mode:chaining ~pad:padding ~iv:iv
     (extract_aes_key key) Cipher.Decrypt
+
 (* [aes_encrypt encryption message] encrypts the given message using the
  * [encryption] setup. *)
 let aes_encrypt encryption = transform_string (encryption.cipher)
+
 (* [aes_decrypt decryption message] decrypts the given message using the
  * [decryption] setup. *)
 let aes_decrypt decryption = transform_string decryption
@@ -111,9 +118,11 @@ let aes_decrypt decryption = transform_string decryption
  * public key *)
 let rsa_encrypt (public_key:public_key) message =
   RSA.encrypt (from_public_key public_key) message
+
 (* Computes a Hashed Message Authentication Code (HMAC) for a given message
  * uses [hash_function ()]. *)
 let hmac message = hash_string (hash_function ()) message
+
 (* Computes a HMAC for a message and pads it with random data to the
  * [rsa_payload_size]. *)
 let padded_hmac message =
@@ -121,13 +130,16 @@ let padded_hmac message =
   let tail =
     Random.string rand (rsa_payload_size - hash_length) in
   hash^tail
+
 (* Signs a message using a private key and a paddded HMAC *)
 let rsa_sign private_key message =
   padded_hmac message |> RSA.sign (from_private_key private_key)
+
 (* Decrypts a message using the private key *)
 let rsa_decrypt private_key message =
   let almost = RSA.decrypt (from_private_key private_key) message in
   String.sub almost 1 rsa_payload_size
+
 (* Verifies the signature for a message.
  * returns: [None] if the signature was invalid, and [Some message] if the
  * signature was valid. *)
@@ -205,6 +217,7 @@ let fingerprint (p_key_pair:public_key_pair) =
   let join (p:public_key) = p.n^p.e in
   let full = (join p_key_pair.signing_key)^(join p_key_pair.encryption_key) in
   hmac full |> transform_string (Base64.encode_compact ())
+
 (* Computes the public fingerprint *)
 let fingerprint_f (f_key_pair:full_key_pair) =
   let extract_public_key (key:full_key) = {
