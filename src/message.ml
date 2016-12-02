@@ -8,7 +8,7 @@ let msg_str = "msg"
 
 let body_to_string = function
   | Msg str -> [msg_str; str]
-  | Init lst -> List.map (fun (a, b) -> a^" "^b) lst
+  | Init lst -> init_str::(List.map (fun (a, b) -> a^" "^b) lst)
 
 let to_string (session_id, body) = session_id::(body_to_string body) |>
                                    String.concat "\n"
