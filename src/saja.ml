@@ -276,7 +276,6 @@ let pawprint state = function
                 print_normal (f^"\n"); return state
   | _        -> return state
 
-
 let process_fingerprint state user : program_state Deferred.t =
   if user = "" then (retrieve_username state.keys,
     Crypto.fingerprint_f(retrieve_user_key state.keys))::[] |> pawprint state
