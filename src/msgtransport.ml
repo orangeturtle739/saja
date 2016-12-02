@@ -23,7 +23,7 @@ let listen port callback =
   let server  = fun () -> Tcp.Server.create terminal
       (fun address r _ -> Reader.contents r >>= fun contents ->
         let str_addr = Socket.Address.Inet.addr address |>
-        Unix.Inet_addr.to_string in callback str_addr contents |> return) in
+                       Unix.Inet_addr.to_string in callback str_addr contents |> return) in
   server |> try_with >>| (function
       | Core.Std.Ok _    -> ()
       | Core.Std.Error _ -> let tmsg = trace port in

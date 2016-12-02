@@ -273,18 +273,18 @@ let get_info state =
 
 let pawprint state = function
   | (u,f)::_ -> print_system "Fingerprint "; print_username (u^": ");
-                print_normal (f^"\n"); return state
+    print_normal (f^"\n"); return state
   | _        -> return state
 
 let process_fingerprint state user : program_state Deferred.t =
-try
-  if user = "" then (retrieve_username state.keys,
-    Crypto.fingerprint_f(retrieve_user_key state.keys))::[] |> pawprint state
-  else (user,
-    Crypto.fingerprint (retrieve_key user state.keys))::[]  |> pawprint state
-with
-  Failure x-> print_error (x^" "); print_username (user^"\n");
-              return state
+  try
+    if user = "" then (retrieve_username state.keys,
+                       Crypto.fingerprint_f(retrieve_user_key state.keys))::[] |> pawprint state
+    else (user,
+          Crypto.fingerprint (retrieve_key user state.keys))::[]  |> pawprint state
+  with
+    Failure x-> print_error (x^" "); print_username (user^"\n");
+    return state
 
 let safe_exit state =
   exit_session state >>= fun state ->
@@ -374,51 +374,51 @@ let process_keys_to_init keys =
   };
   return keys >>| 
   (fun keys -> {
-    keys=keys;
-    user_ips = [];
-    current_chat = None;
-  })
+       keys=keys;
+       user_ips = [];
+       current_chat = None;
+     })
 
 let rec prompt_username keys =
   let user = Keypersist.retrieve_username keys in
   if user = "" then
     begin
-    print_system "Messaging is more fun when people know your name. What's your name?\n";
-    choose
-      [
-        choice (read_input ()) (fun str ->
-            `ReadUser str);
-        choice (Bqueue.recent_take handler_buf) (fun () ->
-            `HandlerCalled)
-      ] >>= fun pick ->
-    match pick with
-    | `ReadUser usr ->
-      if not (String.contains usr ' ') then 
-        let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
-        printf_system "%s" okay_message;
-        return (Keypersist.write_username usr keys) >>=
-        process_keys_to_init
-      else
-        (print_system "Usernames can not contain spaces.\n";
-        prompt_username keys)
-    | `HandlerCalled ->
-      print_system "\nBye!\n";
-      Async.Std.exit(0)
+      print_system "Messaging is more fun when people know your name. What's your name?\n";
+      choose
+        [
+          choice (read_input ()) (fun str ->
+              `ReadUser str);
+          choice (Bqueue.recent_take handler_buf) (fun () ->
+              `HandlerCalled)
+        ] >>= fun pick ->
+      match pick with
+      | `ReadUser usr ->
+        if not (String.contains usr ' ') then 
+          let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
+          printf_system "%s" okay_message;
+          return (Keypersist.write_username usr keys) >>=
+          process_keys_to_init
+        else
+          (print_system "Usernames can not contain spaces.\n";
+           prompt_username keys)
+      | `HandlerCalled ->
+        print_system "\nBye!\n";
+        Async.Std.exit(0)
     end
   else
     (print_system ("Welcome back, "); 
-    print_username(user);
-    print_system(".\n");
-    return keys) >>=
+     print_username(user);
+     print_system(".\n");
+     return keys) >>=
     process_keys_to_init
 
 
 let check_for_user_key keys =
   if Keypersist.retrieve_user_key keys = null_key then
     begin
-    print_system "Generating a fresh key pair.\n";
-    let new_key = Crypto.gen_keys () in
-    return (Keypersist.write_user_key new_key keys)
+      print_system "Generating a fresh key pair.\n";
+      let new_key = Crypto.gen_keys () in
+      return (Keypersist.write_user_key new_key keys)
     end
   else
     return keys
