@@ -6,6 +6,10 @@ type t = {
   messages: (username * message) list
 }
 
+let info state =
+  List.map (fun ({user={username;public_key=_}; ip_address},_) ->
+      (username, ip_address)) state.online_users
+
 let create users =
   let initial_ids = List.map (fun _ -> Crypto.gen_session_id ()) users in
   {

@@ -9,3 +9,4 @@ val send_msg: string -> string -> t ->
   t * ((session_id * username * ip_address) list)
 val send_init: string -> t ->
   Message.body * t * ((session_id * username * ip_address) list)
+val info: t -> (username * ip_address) list

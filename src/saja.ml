@@ -249,16 +249,40 @@ let handle_send_message state msg =
     if not worked then print_error "Unable to send message" else ();
     return {state with current_chat = Some new_chat}
 
+let exit_session state =
+  match state.current_chat with
+  | None -> print_system "Can't exit session because your are not in a session.";
+    return state
+  | Some _ ->
+    let exit_message =
+      "@"^(Keypersist.retrieve_username state.keys)^" left the chat." in
+    handle_send_message state exit_message >>= fun state ->
+    print_system "Exited chat.";
+    return {state with current_chat = None}
+
+let get_info state =
+  match state.current_chat with
+  | None -> print_system "No current chat.\n"
+  | Some chat_state ->
+    print_system "You are currently in a chat with:\n";
+    Chat.info chat_state |>
+    List.map (fun (username, ip)->
+        printf_username "  * @%s (%s)\n" username ip) |>
+    ignore
+
+let safe_exit state =
+  exit_session state >>= fun state ->
+  print_system "Saving keystore...\n";
+  Keypersist.save_keystore state.keys;
+  print_normal ">>|\n"; Async.Std.exit(0)
+
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
 let execute (command: action) (state: program_state) : program_state Deferred.t =
   match command with
   | Discover -> handle_discovery state
   | StartSession user_lst -> start_session state user_lst
-  | QuitProgram ->
-    print_system "Saving keystore...\n";
-    Keypersist.save_keystore state.keys;
-    print_normal ">>|\n"; Async.Std.exit(0)
+  | QuitProgram -> safe_exit state
   | Help ->
     print_system
       ("---------------\n"^
@@ -276,8 +300,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
       );
     return state
   | SendMessage msg -> handle_send_message state msg
-  | GetInfo -> failwith "Unimplemented"
-  | ExitSession -> failwith "Unimplemented"
+  | GetInfo -> get_info state; return state
+  | ExitSession -> exit_session state
   | TransmitKeys ip -> transmit_keys state ip
   | ProcessUsers -> process_users state
 
@@ -309,10 +333,7 @@ let rec main program_state =
   (match pick with
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
    | `ReadConsole s -> execute (action_of_string s) program_state
-   | `HandlerCalled ->
-     print_system "\nSaving keystore.\n";
-     Keypersist.save_keystore program_state.keys;
-     Async.Std.exit(0))
+   | `HandlerCalled -> safe_exit program_state)
   >>= fun new_state ->
   main new_state
 
