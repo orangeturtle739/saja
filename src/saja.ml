@@ -311,13 +311,14 @@ let get_info state =
 
 (* Prints the pawprint (fingerprint) for the (username, fingerprint) pair *)
 let pawprint (u,f) =
-  print_system "Fingerprint "; print_username (u^": "); print_normal (f^"\n")
+  print_system "Fingerprint "; print_username ("@"^u^": ");
+  print_normal (f^"\n")
 
 (* Shows the fingerprint for the specified user *)
 let process_fingerprint state user =
   if Keypersist.user_stored user state.keys then
     (user, Crypto.fingerprint (retrieve_key user state.keys)) |> pawprint
-  else (print_error "No key stored for "; print_username user; print_error "\n")
+  else (print_error "No key stored for "; print_username ("@"^user); print_error "\n")
 (* Prints the current user's fingerprint *)
 let own_fingerprint state =
   (retrieve_username state.keys,
@@ -340,7 +341,7 @@ let safe_exit state =
    | None -> return state
    | Some _ -> exit_session state)
   >>= fun state ->
-  print_system "Saving keystore...\n";
+  print_system "\nSaving keystore...\n";
   Keypersist.save_keystore state.keys;
   printf_prompt ">>|\n"; Async.Std.exit(0)
 
@@ -470,7 +471,7 @@ let rec prompt_username keys =
   end
   else begin
     print_system ("Welcome back, ");
-    print_username(user);
+    print_username("@"^user);
     print_system(".\n");
     return keys
   end
