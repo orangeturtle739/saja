@@ -155,6 +155,8 @@ let resolve_users state users = map_m (resolve_user state) users
 (* Starts a session with the specified usernames *)
 let start_session state username_list =
   match resolve_users state username_list with
+  | Some [] -> print_system ("Please provide a list of usernames. For example,"
+    ^" ':startsession alice bob'\n"); return state
   | Some users ->
     let (init_body, chat, dest_spec) =
       Chat.create users |>
