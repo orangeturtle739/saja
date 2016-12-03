@@ -335,7 +335,7 @@ let safe_exit state =
   >>= fun state ->
   print_system "Saving keystore...\n";
   Keypersist.save_keystore state.keys;
-  print_normal ">>|\n"; Async.Std.exit(0)
+  printf_prompt ">>|\n"; Async.Std.exit(0)
 
 (* [execute] takes an action and a program state and returns
    a new program state with the action executed. *)
@@ -394,7 +394,7 @@ let action_of_string (s: string) : action =
 
 (* Main loop *)
 let rec main program_state =
-  print_normal ">>= ";
+  printf_prompt ">>= ";
   choose
     [
       choice (Bqueue.recent_take message_buf) (fun (addr, str) ->

@@ -65,3 +65,6 @@ let rec read_yes_no () : bool Deferred.t =
   if yes lower then return true
   else if no lower then return false
   else read_yes_no()
+
+let printf_prompt prompt = 
+  eprintf prompt
