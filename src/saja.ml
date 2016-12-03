@@ -365,7 +365,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
     return state
-  | SendMessage msg -> handle_send_message state msg
+  | SendMessage msg when msg <> "" -> handle_send_message state msg
+  | SendMessage _ -> return state
   | GetInfo -> get_info state; return state
   | ExitSession -> exit_session state
   | TransmitKeys ip -> transmit_keys ip >>| fun _ -> state
