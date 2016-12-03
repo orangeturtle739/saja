@@ -24,7 +24,9 @@ val fingerprint_f : full_key_pair -> string
 (* [advance id] evaluates to the next ID in the sequence. Every time a message
  * within a session is received, the session ID should be advanced. *)
 val advance : session_id -> session_id
-
+(* [verify_session_id id] evaluates to [Some id] if the id is valid
+ * (of the properly length and format), and [None] if the id is not valid *)
+val verify_session_id : session_id -> session_id option
 (* Generates a new session ID *)
 val gen_session_id : unit -> session_id
 

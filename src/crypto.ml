@@ -202,6 +202,13 @@ let advance session_id = hmac session_id |>
 (* Generates the a random initial session ID *)
 let gen_session_id () = Random.string rand hash_length |>
                         transform_string (Base64.encode_compact ())
+let verify_session_id session_id =
+  try
+    let decoded = transform_string (Base64.decode ()) session_id in
+    if String.length decoded = hash_length then Some session_id
+    else None
+  with
+    Cryptokit.Error _ -> None
 
 (* Generates a full RSA key pair *)
 let gen_keys () =

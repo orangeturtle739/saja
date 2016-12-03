@@ -156,7 +156,7 @@ let resolve_users state users = map_m (resolve_user state) users
 let start_session state username_list =
   match resolve_users state username_list with
   | Some [] -> print_system ("Please provide a list of usernames. For example,"
-    ^" ':startsession alice bob'\n"); return state
+                             ^" ':startsession alice bob'\n"); return state
   | Some users ->
     let (init_body, chat, dest_spec) =
       Chat.create users |>
@@ -193,8 +193,8 @@ let resolve_init_body state body =
 
 (* Processes an init message *)
 let process_init_message state origin_user session_id body =
-  match resolve_init_body state body with
-  | Some chat_users ->
+  match resolve_init_body state body >>>= Chat.check_join session_id with
+  | Some (session_id, chat_users) ->
     let full_chat_users = origin_user::chat_users in
     print_system "You have been invited to a chat with: \n";
     List.map (fun user ->
@@ -333,8 +333,8 @@ let list_keys state =
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
   (match state.current_chat with
-    | None -> return state
-    | Some _ -> exit_session state)
+   | None -> return state
+   | Some _ -> exit_session state)
   >>= fun state ->
   print_system "Saving keystore...\n";
   Keypersist.save_keystore state.keys;
