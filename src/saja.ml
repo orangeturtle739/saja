@@ -204,7 +204,7 @@ let process_init_message state origin_user session_id body =
     read_yes_no () >>= fun join ->
     if join then (
       let my_name = Keypersist.retrieve_username state.keys in
-      let joining_message = my_name^" joined." in
+      let joining_message = " joined." in
       let (chat, dest_spec) = Chat.join session_id full_chat_users |>
                               Chat.send_msg my_name joining_message in
       send_group_message
@@ -295,7 +295,7 @@ let exit_session state =
     return state
   | Some _ ->
     let exit_message =
-      "@"^(Keypersist.retrieve_username state.keys)^" left the chat.\n" in
+      " left the chat.\n" in
     handle_send_message state exit_message >>= fun state ->
     print_system "Exited chat.\n";
     return {state with current_chat = None}
@@ -359,7 +359,11 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
        ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
        ":info -> Gets information about the current session.\n"^
-       ":exitsession -> Exits the messaging session (but not the program). \n\n"^
+       ":exitsession -> Exits the messaging session (but not the program). \n"^
+       ":transmit <ip-addr> -> Manually transmits your public key to an IP address. \n"^
+       ":process -> Processes any public keys that have been manually sent to you. \n"^
+       ":fingerprint -> Shows your fingerprint."^
+       ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
     return state
