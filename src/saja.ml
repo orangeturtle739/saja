@@ -28,6 +28,7 @@ type action =
   | ProcessUsers
   | Fingerprint of username
   | FingerprintU
+  | Keys
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -39,10 +40,9 @@ type program_state = {
 
 (* Sends the user's key to the specified IP address *)
 let transmit_keys state ip =
-  Discovery.tcp_key_transmit ip >>= fun sent ->
-  (if sent then print_system "Sent key.\n" else
-     print_error "There was a problem sending your key.\n");
-  return state
+  Discovery.tcp_key_transmit ip >>| fun sent ->
+  if sent then print_system "Sent key.\n" else
+    print_error "There was a problem sending your key.\n"
 
 (* Safely adds the specified used to the keychain, prompting if needed
  * to verify the key fingerprint. *)
@@ -317,11 +317,16 @@ let pawprint (u,f) =
 let process_fingerprint state user =
   if Keypersist.user_stored user state.keys then
     (user, Crypto.fingerprint (retrieve_key user state.keys)) |> pawprint
-  else print_error "No key stored for "; print_username user; print_error "\n"
+  else (print_error "No key stored for "; print_username user; print_error "\n")
 (* Prints the current user's fingerprint *)
 let own_fingerprint state =
   (retrieve_username state.keys,
    Crypto.fingerprint_f(retrieve_user_key state.keys)) |> pawprint
+
+(* Lists all known fingerprints *)
+let list_keys state =
+  Keypersist.retrieve_keys state.keys |> List.split |> fst |>
+  List.map (process_fingerprint state) |> ignore
 
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
@@ -356,10 +361,11 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> handle_send_message state msg
   | GetInfo -> get_info state; return state
   | ExitSession -> exit_session state
-  | TransmitKeys ip -> transmit_keys state ip
+  | TransmitKeys ip -> transmit_keys state ip >>| fun _ -> state
   | ProcessUsers -> process_users state
   | Fingerprint u -> process_fingerprint state u; return state
   | FingerprintU -> own_fingerprint state; return state
+  | Keys -> list_keys state; return state
 
 (* Parses a string into an action *)
 let action_of_string (s: string) : action =
@@ -376,6 +382,7 @@ let action_of_string (s: string) : action =
   | ":startsession"::t -> StartSession t
   | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
+  | [":keys"] -> Keys
   | _ -> SendMessage s
 
 (* Main loop *)
