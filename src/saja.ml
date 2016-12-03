@@ -88,10 +88,10 @@ let rec add_users users state = match users with
   | h::t -> add_user h state >>= add_users t
 
 (* Processes the current users in found *)
-let process_users =
+let process_users state =
   let current_found = !found in
   found := [];
-  add_users current_found
+  add_users current_found state
 
 (* Sends a broadcast and processes users *)
 let handle_discovery state =
