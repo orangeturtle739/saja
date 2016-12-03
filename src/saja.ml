@@ -372,7 +372,7 @@ let process_keys_to_init keys =
       }
     }
   };
-  return keys >>| 
+  return keys >>|
   (fun keys -> {
        keys=keys;
        user_ips = [];
@@ -393,7 +393,7 @@ let rec prompt_username keys =
         ] >>= fun pick ->
       match pick with
       | `ReadUser usr ->
-        if not (String.contains usr ' ') then 
+        if not (String.contains usr ' ') then
           let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
           printf_system "%s" okay_message;
           return (Keypersist.write_username usr keys) >>=
@@ -406,7 +406,7 @@ let rec prompt_username keys =
         Async.Std.exit(0)
     end
   else
-    (print_system ("Welcome back, "); 
+    (print_system ("Welcome back, ");
      print_username(user);
      print_system(".\n");
      return keys) >>=
@@ -454,7 +454,7 @@ let _ =
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
-  let _ = prompt_password() >>| (fun init_state -> main init_state) in
+  let _ = prompt_password() >>| main in
   let _ = Signal.handle [Signal.of_string "sigint"]
       ~f:(fun _ -> Bqueue.add () handler_buf) in
-  let _ = Scheduler.go() in ()
+  Scheduler.go()
