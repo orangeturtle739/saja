@@ -137,6 +137,7 @@ let option_assoc key assoc =
  * returns: [Some user] if the username was valid and discovered,
  * [None] if not *)
 let resolve_user state username =
+  print_endline ("Trying to resolve: "^username);
   option_assoc username state.user_ips >>>| fun ip ->
   {
     user =
