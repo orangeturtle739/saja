@@ -178,9 +178,11 @@ let resolve_init_body state body =
   let my_fingerprint =
     Crypto.fingerprint_f (Keypersist.retrieve_user_key state.keys) in
   let good_split = List.filter (fun (_, fp) -> fp <> my_fingerprint) body in
-  let chat_users =
+
+  let chat_users = (*
     List.map (fun (ip,_) ->
-        List.find (fun (_,rip) -> ip=rip) state.user_ips) good_split |>
+        List.find (fun (_,rip) -> ip=rip) state.user_ips) good_split |> *)
+  good_split |>
     List.map fst |> resolve_users state in
   chat_users >>>| List.combine good_split >>>= fun user_data_lst ->
   let good_list =
