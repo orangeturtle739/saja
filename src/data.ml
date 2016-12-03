@@ -56,3 +56,6 @@ type online_user = {
 type encrypted_message = string
 (* The type of a plaintext message *)
 type message = string
+
+(* The type of a filename *)
+type filename = string

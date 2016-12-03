@@ -29,6 +29,7 @@ type action =
   | Fingerprint of username
   | FingerprintU
   | Keys
+  | SaveChat of filename
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -327,6 +328,12 @@ let list_keys state =
   Keypersist.retrieve_keys state.keys |> List.split |> fst |>
   List.map (process_fingerprint state) |> ignore
 
+(* Saves a chat log to file. *)
+let save_chat file state =
+  match state.current_chat with
+  | Some chat -> Msgpersist.write_log file (Chat.msg_log chat)
+  | None -> print_error "No chat currently opened.\n"
+
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
   (match state.current_chat with
@@ -361,7 +368,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":process -> Processes any public keys that have been manually sent to you. \n"^
        ":fingerprint -> Shows your fingerprint."^
        ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
-       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
+       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"^
+       ":savechat <file> -> Saves the current chat log to file.\n"
       );
     return state
   | SendMessage msg when msg <> "" -> handle_send_message state msg
@@ -373,6 +381,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Fingerprint u -> process_fingerprint state u; return state
   | FingerprintU -> own_fingerprint state; return state
   | Keys -> list_keys state; return state
+  | SaveChat file -> save_chat file state; return state
 
 (* Parses a string into an action *)
 let action_of_string (s: string) : action =
@@ -390,6 +399,7 @@ let action_of_string (s: string) : action =
   | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
   | [":keys"] -> Keys
+  | [":savechat"; file] -> SaveChat file  
   | _ -> SendMessage s
 
 (* Main loop *)

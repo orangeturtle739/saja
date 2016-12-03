@@ -7,8 +7,8 @@ type chatlog = (username * message) list
 (* [writelog file log] writes a chat history [log] to [file]. *)
 let write_log (file: filename) (log: chatlog) =
   let j = `List (List.map (fun (user, msg) ->
-      `List [`String user; `String msg]) log) in
-  write_file file j
+      `List [`String user; `String msg]) log |> List.rev) in
+  unenc_write_file file j
 
 (* [parse_msg msg] converts a JSON list representing a message entry
  * into a tuple (user, message). *)
@@ -19,5 +19,5 @@ let parse_msg (msg: json) =
 
 (* [read_log file] returns the chatlog described by a [file]. *)
 let read_log (file: filename): chatlog =
-  let j = from_file file in
+  let j = unenc_read_file file in
   Util.to_list j |> List.map parse_msg
