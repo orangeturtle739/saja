@@ -155,6 +155,16 @@ let retrieve_key (user: username) (store: t) =
   with
     Not_found -> failwith "No key stored for user"
 
+(* [retrieve_fingerprint_user fp store] is Some [username] associated
+ * with the fingerprint in [store], or None if no such user exists. *)
+let retrieve_fingerprint_user fp (store: t) =
+  let matches = Store.filter (fun usr key -> Crypto.fingerprint key = fp)
+                store.outside_keys in
+  try
+    Some (Store.choose matches |> fst)
+  with
+    Not_found -> None
+
 (* [retrieve_keys store] is an association list containing all known
  * verified username-public key pairs in [store]. *)
 let retrieve_keys (store: t) =

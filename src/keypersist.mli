@@ -36,6 +36,10 @@ val user_stored: username -> t -> bool
  * [store]. *)
 val retrieve_key: username -> t -> public_key_pair
 
+(* [retrieve_fingerprint_user fp store] is Some [username] associated
+ * with the fingerprint in [store], or None if no such user exists. *)
+val retrieve_fingerprint_user: string -> t -> username option
+
 (* [retrieve_user key store] is the username corresponding to public [key]
  * pair in [store]. *)
 val retrieve_user: public_key_pair -> t -> username
