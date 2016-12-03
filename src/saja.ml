@@ -359,7 +359,11 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":discover -> Runs the UDP discovery module to find other users in the network.\n"^
        ":startsession <user1> <user2> ... <usern> -> Begins a session with n users with the specified usernames.\n"^
        ":info -> Gets information about the current session.\n"^
-       ":exitsession -> Exits the messaging session (but not the program). \n\n"^
+       ":exitsession -> Exits the messaging session (but not the program). \n"^
+       ":transmit <ip-addr> -> Manually transmits your public key to an IP address. \n"^
+       ":process -> Processes any public keys that have been manually sent to you. \n"^
+       ":fingerprint -> Shows your fingerprint."^
+       ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
     return state
