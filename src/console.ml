@@ -5,7 +5,9 @@ open Data
 let white = "\x1b[0m"
 let red = "\x1b[31m"
 let yellow = "\x1b[33m"
-let blue ="\x1b[34m"
+let blue = "\x1b[34m"
+let cyan = "\x1b[36m"
+let green = "\x1b[32m"
 
 let stdin : Reader.t = Lazy.force Reader.stdin
 
@@ -28,7 +30,8 @@ let read_input () : string Deferred.t =
 let print_normal s =
   printf "%s" (white^s^white)
 
-let print_message _ = failwith "AMIT IMPLEMENT ME. WE NEED MORE COLORS"
+let print_message s =
+  printf "%s" (cyan^s^white)
 
 let print_error s =
   printf "%s" (red^s^white)
@@ -37,11 +40,11 @@ let print_system s =
   printf "%s" (yellow^s^white)
 
 let print_username s =
-  printf "%s" (blue^s^white)
+  printf "%s" (green^s^white)
 
 let printf_system format = ksprintf print_system format
 let printf_error format = ksprintf print_error format
-let printf_message format = ksprintf print_error format
+let printf_message format = ksprintf print_message format
 let printf_normal format = ksprintf print_normal format
 let printf_username format = ksprintf print_username format
 
