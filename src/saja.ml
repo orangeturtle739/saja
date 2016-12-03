@@ -330,7 +330,10 @@ let list_keys state =
 
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
-  exit_session state >>= fun state ->
+  (match state.current_chat with
+    | None -> return state
+    | Some _ -> exit_session state)
+  >>= fun state ->
   print_system "Saving keystore...\n";
   Keypersist.save_keystore state.keys;
   print_normal ">>|\n"; Async.Std.exit(0)
