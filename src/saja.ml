@@ -7,15 +7,13 @@ open Maybe
 
 (* The port to do all message sending on *)
 let chat_port = 12999
+(* The buffer which stores the online users which we've found through
+ * broadcasts *)
 let found = ref []
-
+(* The buffer for storing incoming messages *)
 let message_buf = Bqueue.create ()
+(* The buffer for storing SIGINT requests *)
 let handler_buf = Bqueue.create ()
-
-let null_key = {
-  full_signing_key={n="0";e="0";d="0"};
-  full_encryption_key={n="0";e="0";d="0"}
-}
 
 (* [action] represents an action taken. *)
 type action =
@@ -29,6 +27,8 @@ type action =
   | TransmitKeys of ip_address
   | ProcessUsers
   | Fingerprint of username
+  | FingerprintU
+  | Keys
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -38,66 +38,77 @@ type program_state = {
   current_chat: Chat.t option;
 }
 
+(* Sends the user's key to the specified IP address *)
 let transmit_keys state ip =
-  Discovery.tcp_key_transmit ip >>= (fun sent ->
-      (if sent then print_system "Sent key.\n" else
-         print_error "There was a problem sending your key.\n"); return state)
+  Discovery.tcp_key_transmit ip >>| fun sent ->
+  if sent then print_system "Sent key.\n" else
+    print_error "There was a problem sending your key.\n"
 
-let rec process_users state =
-  let add_user {user={username;public_key}; ip_address} state =
-    let ok =
-      if username = (Keypersist.retrieve_username state.keys) then return false
-      else if Keypersist.verify_key username public_key state.keys then
-        (print_system "Discovered ";
-         printf_username "@%s " username;
-         printf_system "at %s\n" ip_address; return true) else
-      if Keypersist.user_stored username state.keys then
-        (print_system "*******************************\n";
-         print_error "Warning! There is something fishy about the key for ";
-         printf_username "@%s\n" username;
-         print_system "The key stored in your keychain has a different fingerprint than\n";
-         print_system "the key received:\n";
-         printf_system "Keychain: %s\n"
-           (Keypersist.retrieve_key username state.keys |> Crypto.fingerprint);
-         printf_system "Received: %s\n"
-           (Crypto.fingerprint public_key);
-         print_system "Would you like to reject the received key? [y/n]\n";
-         read_yes_no () >>| not) else
-        (print_system "*******************************\n";
-         printf_error "Warning! There is no key in your keychain for @%s\n" username;
-         printf_system "Fingerprint: %s\n"
-           (Crypto.fingerprint public_key);
-         print_system "You should verify the fingerprint in person before accepting this key\n";
-         print_system "Would you like to accept the received key? [y/n]\n";
-         read_yes_no ()) in
-    ok >>| (fun really_ok ->
-        if not really_ok then state else
-          {
-            state with
-            user_ips = (username, ip_address)::
-                       (List.remove_assoc username state.user_ips);
-            keys = write_key username public_key state.keys
-          }
-      ) in
-  match !found with
+(* Safely adds the specified used to the keychain, prompting if needed
+ * to verify the key fingerprint. *)
+let add_user {user={username;public_key}; ip_address} state =
+  (if username = (Keypersist.retrieve_username state.keys) then return false
+   else if Keypersist.verify_key username public_key state.keys then
+     (print_system "Discovered ";
+      printf_username "@%s " username;
+      printf_system "at %s\n" ip_address; return true) else
+   if Keypersist.user_stored username state.keys then
+     (print_system "*******************************\n";
+      print_error "Warning! There is something fishy about the key for ";
+      printf_username "@%s\n" username;
+      print_system
+        "The key stored in your keychain has a different fingerprint than\n";
+      print_system "the key received:\n";
+      printf_system "Keychain: %s\n"
+        (Keypersist.retrieve_key username state.keys |> Crypto.fingerprint);
+      printf_system "Received: %s\n"
+        (Crypto.fingerprint public_key);
+      print_system "Would you like to reject the received key? [y/n]\n";
+      read_yes_no () >>| not) else
+     (print_system "*******************************\n";
+      printf_error
+        "Warning! There is no key in your keychain for @%s\n" username;
+      printf_system "Fingerprint: %s\n"
+        (Crypto.fingerprint public_key);
+      print_system
+        "You should verify the fingerprint in person before accepting this key\n";
+      print_system "Would you like to accept the received key? [y/n]\n";
+      read_yes_no ())) >>| (function
+      | true -> {
+          state with
+          user_ips = (username, ip_address)::
+                     (List.remove_assoc username state.user_ips);
+          keys = write_key username public_key state.keys
+        }
+      | false -> state)
+
+(* Adds the specified users safely to the keychain *)
+let rec add_users users state = match users with
   | [] -> return state
-  | h::t -> found := t; add_user h state >>= process_users
+  | h::t -> add_user h state >>= add_users t
 
+(* Processes the current users in found *)
+let process_users =
+  let current_found = !found in
+  found := [];
+  add_users current_found
+
+(* Sends a broadcast and processes users *)
 let handle_discovery state =
-  Discovery.send_broadcast () >>= (fun sent ->
-      if sent then (
-        print_system "Sent broadcast.\n";
-        after (Core.Std.sec 1.) >>= (fun _ ->
-            (* After a second, process users *)
-            process_users state >>=
-            (fun state ->
-               found := []; return state)
-          ))
-      else
-        (print_system "Error sending broadcast.\n"; return state))
+  Discovery.send_broadcast () >>= function
+  | true ->
+    print_system "Sent broadcast.\n";
+    after (Core.Std.sec 1.) >>= fun _ ->
+    (* After a second, process users *)
+    process_users state
+  | false -> print_system "Error sending broadcast.\n"; return state
 
+(* Converts a full key to a private key *)
 let full_key_to_private {n;e=_;d} = {n;d}
 
+(* Sends a message with the specified session ID to the user user with
+ * the specified username and ip address with the specified message body
+ * returns: true if the message was sent *)
 let send_message state session_id username ip_address message_body =
   let full_message = Message.create session_id message_body |>
                      Message.to_string in
@@ -108,14 +119,25 @@ let send_message state session_id username ip_address message_body =
       (signing.full_signing_key |> full_key_to_private) full_message in
   Msgtransport.send_msg ip_address chat_port encr_message
 
+(* Sends the specified message to all the (session_id, username, ip) tuples
+ * in dest_spec.
+ * returns: true if all messages were sent *)
 let send_group_message state message_body dest_spec =
   List.map (fun (session_id, username, ip) ->
       send_message state session_id username ip message_body) dest_spec |>
   Deferred.all >>| List.for_all (fun x -> x)
 
+let option_assoc key assoc =
+  try
+    Some (List.assoc key assoc)
+  with
+    Not_found -> None
+
+(* Tries to resolve a username to an online user.
+ * returns: [Some user] if the username was valid and discovered,
+ * [None] if not *)
 let resolve_user state username =
-  (if List.mem_assoc username state.user_ips then
-     Some (List.assoc username state.user_ips) else None) >>>| fun ip ->
+  option_assoc username state.user_ips >>>| fun ip ->
   {
     user =
       {
@@ -125,8 +147,12 @@ let resolve_user state username =
     ip_address = ip
   }
 
+(* Tries to resolve a list of users.
+ * returns: [Some lst] if it worked, [None] if there was a problem
+ * with any user *)
 let resolve_users state users = map_m (resolve_user state) users
 
+(* Starts a session with the specified usernames *)
 let start_session state username_list =
   match resolve_users state username_list with
   | Some users ->
@@ -139,10 +165,13 @@ let start_session state username_list =
     else (print_system "Failed to start chat.\n"; return state)
   | None -> print_error "Unable to resolve usernames.\n"; return state
 
+(* Adds the pair (addr, str) to the message buf *)
 let handle_incoming_message addr str =
-  (* printf_system "Received: %s\nFound: %s" str addr; *)
   Bqueue.add (addr, str) message_buf
 
+(* Resolves the body of an init message into [Some online_users] or
+ * [None] if the keys or IP address don't verify. Also removes the current
+ * user from the list *)
 let resolve_init_body state body =
   let my_fingerprint =
     Crypto.fingerprint_f (Keypersist.retrieve_user_key state.keys) in
@@ -160,7 +189,7 @@ let resolve_init_body state body =
   in
   if good_list then Some (List.split user_data_lst |> snd) else None
 
-
+(* Processes an init message *)
 let process_init_message state origin_user session_id body =
   match resolve_init_body state body with
   | Some chat_users ->
@@ -184,6 +213,7 @@ let process_init_message state origin_user session_id body =
     ) else return state
   | None -> return state
 
+(* Processes an incoming message *)
 let process_msg_messsage state from session_id body =
   let received = state.current_chat >>>=
     Chat.receive_msg from session_id body in
@@ -198,6 +228,8 @@ let process_msg_messsage state from session_id body =
         current_chat = Some chat_state;
       }
 
+(* Decrypts the message, returning [Some (username, decrypted)]
+ * if the message decrypted properly. Otherwise, returns [None] *)
 let decrypt_message state str =
   let public_key_map = Keypersist.retrieve_keys state.keys in
   let public_signing_keys = List.split public_key_map |> snd |>
@@ -210,15 +242,16 @@ let decrypt_message state str =
   let signing_key_to_username_map = List.combine public_signing_keys
       (List.split public_key_map |> fst) in
   let username = List.assoc signing_key signing_key_to_username_map in
-  (* printf_system "Received: %s\nFrom: %s\n" decrypted username; *)
   (username, decrypted)
 
+(* Processes any incoming message from the network *)
 let process_message state origin_user message =
   let session_id = (Message.session_id message) in
   match Message.body message with
   | Message.Msg body -> process_msg_messsage state origin_user session_id body
   | Message.Init body -> process_init_message state origin_user session_id body
 
+(* Handles an incoming network message *)
 let handle_received_message state addr str =
   decrypt_message state str >>>| fun (username, decrypted_message) ->
   let origin_user =
@@ -234,11 +267,14 @@ let handle_received_message state addr str =
   | Some message -> process_message state origin_user message
   | None -> return state
 
+(* Handles a message, returning the current state if the message failed
+ * to process, or the new state if the message processed succesfully. *)
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
   | Some thing -> thing
   | None -> return state
 
+(* Tries to send a message in the current session *)
 let handle_send_message state msg =
   match state.current_chat with
   | None -> print_error "Can't send message because you are not in a chat.\n";
@@ -250,6 +286,7 @@ let handle_send_message state msg =
     if not worked then print_error "Unable to send message\n" else ();
     return {state with current_chat = Some new_chat}
 
+(* Tries to exit the current session *)
 let exit_session state =
   match state.current_chat with
   | None -> print_error "Can't exit session because your are not in a session.\n";
@@ -261,6 +298,7 @@ let exit_session state =
     print_system "Exited chat.\n";
     return {state with current_chat = None}
 
+(* Prints info about the current session *)
 let get_info state =
   match state.current_chat with
   | None -> print_system "No current chat.\n"
@@ -271,21 +309,26 @@ let get_info state =
         printf_username "  * @%s (%s)\n" username ip) |>
     ignore
 
-let pawprint state = function
-  | (u,f)::_ -> print_system "Fingerprint "; print_username (u^": ");
-    print_normal (f^"\n"); return state
-  | _        -> return state
+(* Prints the pawprint (fingerprint) for the (username, fingerprint) pair *)
+let pawprint (u,f) =
+  print_system "Fingerprint "; print_username (u^": "); print_normal (f^"\n")
 
-let process_fingerprint state user : program_state Deferred.t =
-  try
-    if user = "" then (retrieve_username state.keys,
-                       Crypto.fingerprint_f(retrieve_user_key state.keys))::[] |> pawprint state
-    else (user,
-          Crypto.fingerprint (retrieve_key user state.keys))::[]  |> pawprint state
-  with
-    Failure x-> print_error (x^" "); print_username (user^"\n");
-    return state
+(* Shows the fingerprint for the specified user *)
+let process_fingerprint state user =
+  if Keypersist.user_stored user state.keys then
+    (user, Crypto.fingerprint (retrieve_key user state.keys)) |> pawprint
+  else (print_error "No key stored for "; print_username user; print_error "\n")
+(* Prints the current user's fingerprint *)
+let own_fingerprint state =
+  (retrieve_username state.keys,
+   Crypto.fingerprint_f(retrieve_user_key state.keys)) |> pawprint
 
+(* Lists all known fingerprints *)
+let list_keys state =
+  Keypersist.retrieve_keys state.keys |> List.split |> fst |>
+  List.map (process_fingerprint state) |> ignore
+
+(* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
   exit_session state >>= fun state ->
   print_system "Saving keystore...\n";
@@ -318,13 +361,16 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> handle_send_message state msg
   | GetInfo -> get_info state; return state
   | ExitSession -> exit_session state
-  | TransmitKeys ip -> transmit_keys state ip
+  | TransmitKeys ip -> transmit_keys state ip >>| fun _ -> state
   | ProcessUsers -> process_users state
-  | Fingerprint u -> process_fingerprint state u
+  | Fingerprint u -> process_fingerprint state u; return state
+  | FingerprintU -> own_fingerprint state; return state
+  | Keys -> list_keys state; return state
 
+(* Parses a string into an action *)
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
-  let ntokens = List.filter (fun a -> if a<>"" then true else false) tokens in
+  let ntokens = List.filter (fun a -> a<>"") tokens in
   match ntokens with
   | [":discover"] -> Discover
   | [":quit"] -> QuitProgram
@@ -334,10 +380,12 @@ let action_of_string (s: string) : action =
   | [":exitsession"] -> ExitSession
   | ":transmit"::[ip] -> TransmitKeys ip
   | ":startsession"::t -> StartSession t
-  | [":fingerprint"] -> Fingerprint ""
+  | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
+  | [":keys"] -> Keys
   | _ -> SendMessage s
 
+(* Main loop *)
 let rec main program_state =
   print_normal ">>= ";
   choose
@@ -353,11 +401,10 @@ let rec main program_state =
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
    | `ReadConsole s -> execute (action_of_string s) program_state
    | `HandlerCalled -> safe_exit program_state)
-  >>= fun new_state ->
-  main new_state
+  >>= main
 
+(* Processes the keychain into the initial user state *)
 let process_keys_to_init keys =
-  Discovery.start_listening ();
   let user_key = Keypersist.retrieve_user_key keys in
   Discovery.set_key {
     username = Keypersist.retrieve_username keys;
@@ -372,48 +419,50 @@ let process_keys_to_init keys =
       }
     }
   };
-  return keys >>| 
-  (fun keys -> {
-       keys=keys;
-       user_ips = [];
-       current_chat = None;
-     })
+  {
+    keys=keys;
+    user_ips = [];
+    current_chat = None;
+  }
 
+(* Prompts the user for a username *)
 let rec prompt_username keys =
   let user = Keypersist.retrieve_username keys in
-  if user = "" then
-    begin
-      print_system "Messaging is more fun when people know your name. What's your name?\n";
-      choose
-        [
-          choice (read_input ()) (fun str ->
-              `ReadUser str);
-          choice (Bqueue.recent_take handler_buf) (fun () ->
-              `HandlerCalled)
-        ] >>= fun pick ->
-      match pick with
-      | `ReadUser usr ->
-        if not (String.contains usr ' ') then 
-          let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
-          printf_system "%s" okay_message;
-          return (Keypersist.write_username usr keys) >>=
-          process_keys_to_init
-        else
-          (print_system "Usernames can not contain spaces.\n";
-           prompt_username keys)
-      | `HandlerCalled ->
-        print_system "\nBye!\n";
-        Async.Std.exit(0)
-    end
-  else
-    (print_system ("Welcome back, "); 
-     print_username(user);
-     print_system(".\n");
-     return keys) >>=
-    process_keys_to_init
-
+  if user = "" then begin
+    print_system
+      "Messaging is more fun when people know your name. What's your name?\n";
+    choose
+      [
+        choice (read_input ()) (fun str ->
+            `ReadUser str);
+        choice (Bqueue.recent_take handler_buf) (fun () ->
+            `HandlerCalled)
+      ] >>= fun pick ->
+    match pick with
+    | `ReadUser usr ->
+      if not (String.contains usr ' ') then
+        let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
+        printf_system "%s" okay_message;
+        Keypersist.write_username usr keys |> return
+      else
+        (print_system "Usernames can not contain spaces.\n";
+         prompt_username keys)
+    | `HandlerCalled ->
+      print_system "\nBye!\n";
+      Async.Std.exit(0)
+  end
+  else begin
+    print_system ("Welcome back, ");
+    print_username(user);
+    print_system(".\n");
+    return keys
+  end
 
 let check_for_user_key keys =
+  let null_key = {
+    full_signing_key={n="0";e="0";d="0"};
+    full_encryption_key={n="0";e="0";d="0"};
+  } in
   if Keypersist.retrieve_user_key keys = null_key then
     begin
       print_system "Generating a fresh key pair.\n";
@@ -424,7 +473,8 @@ let check_for_user_key keys =
     return keys
 
 let rec prompt_password () =
-  print_system "Please enter your password. If this is your first time, type in your desired password.\n";
+  print_system
+    "Please enter your password. If this is your first time, type in your desired password.\n";
   choose
     [
       choice (read_input ()) (fun str ->
@@ -437,7 +487,8 @@ let rec prompt_password () =
     (try
        return (Keypersist.load_keystore password) >>=
        check_for_user_key >>=
-       prompt_username
+       prompt_username >>|
+       process_keys_to_init
      with
        Persistence.Bad_password ->
        print_error "Incorrect password!\n";
@@ -454,7 +505,8 @@ let _ =
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
-  let _ = prompt_password() >>| (fun init_state -> main init_state) in
+  let _ = Discovery.start_listening () in
+  let _ = prompt_password() >>| main in
   let _ = Signal.handle [Signal.of_string "sigint"]
       ~f:(fun _ -> Bqueue.add () handler_buf) in
-  let _ = Scheduler.go() in ()
+  Scheduler.go()
