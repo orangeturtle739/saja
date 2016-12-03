@@ -451,12 +451,12 @@ let rec prompt_username keys =
       ] >>= fun pick ->
     match pick with
     | `ReadUser usr ->
-      if not (String.contains usr ' ') then
+      if not (String.contains usr ' ' || usr = "") then
         let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
         printf_system "%s" okay_message;
         Keypersist.write_username usr keys |> return
       else
-        (print_system "Usernames can not contain spaces.\n";
+        (print_system "Usernames can not contain spaces, or be blank.\n";
          prompt_username keys)
     | `HandlerCalled ->
       print_system "\nBye!\n";
