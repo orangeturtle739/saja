@@ -39,7 +39,7 @@ type program_state = {
 }
 
 (* Sends the user's key to the specified IP address *)
-let transmit_keys state ip =
+let transmit_keys ip =
   Discovery.tcp_key_transmit ip >>| fun sent ->
   if sent then print_system "Sent key.\n" else
     print_error "There was a problem sending your key.\n"
@@ -361,7 +361,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage msg -> handle_send_message state msg
   | GetInfo -> get_info state; return state
   | ExitSession -> exit_session state
-  | TransmitKeys ip -> transmit_keys state ip >>| fun _ -> state
+  | TransmitKeys ip -> transmit_keys ip >>| fun _ -> state
   | ProcessUsers -> process_users state
   | Fingerprint u -> process_fingerprint state u; return state
   | FingerprintU -> own_fingerprint state; return state
