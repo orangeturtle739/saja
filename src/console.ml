@@ -14,7 +14,7 @@ let buf = Bqueue.create ()
 let really_read_input () : string Deferred.t =
   Reader.read_line stdin >>= function
   | `Ok s -> return s
-  | `Eof -> failwith "Uh-oh!"
+  | `Eof -> return ""
 
 (* Start read input buffering loop *)
 let rec queue_input () = really_read_input () >>= fun s ->
