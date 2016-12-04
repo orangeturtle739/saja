@@ -27,7 +27,7 @@ let listen port callback =
       (fun address r _ -> Reader.contents r >>= fun contents ->
         let str_addr = Socket.Address.Inet.addr address |>
                        Unix.Inet_addr.to_string in callback str_addr contents
-                       |> return) in
+                                                   |> return) in
   server |> try_with >>| (function
       | Core.Std.Ok _    -> ()
       | Core.Std.Error _ -> trace port;
