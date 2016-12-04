@@ -274,7 +274,7 @@ let handle_received_message_ignore state addr str =
   | None -> return state
 
 (* Tries to send a message in the current session *)
-let handle_send_message state msg =
+let handle_send_message state msg exit =
   match state.current_chat with
   | None -> print_error "Can't send message because you are not in a chat.\n";
     return state
@@ -282,8 +282,9 @@ let handle_send_message state msg =
     let (new_chat, dest_spec) =
       Chat.send_msg (Keypersist.retrieve_username state.keys) msg chat_state in
     send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
-    if not worked then print_error "Unable to send message\n" else ();
-    return {state with current_chat = Some new_chat}
+    if exit then return {state with current_chat = Some new_chat}
+    else (if not worked then print_error "Unable to send message\n" else ();
+    return {state with current_chat = Some new_chat})
 
 (* Tries to exit the current session *)
 let exit_session state =
@@ -293,7 +294,7 @@ let exit_session state =
   | Some _ ->
     let exit_message =
       " left the chat.\n" in
-    handle_send_message state exit_message >>= fun state ->
+    handle_send_message state exit_message true >>= fun state ->
     print_system "Exited chat.\n";
     return {state with current_chat = None}
 
@@ -365,7 +366,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
       );
     return state
-  | SendMessage msg when msg <> "" -> handle_send_message state msg
+  | SendMessage msg when msg <> "" -> handle_send_message state msg false
   | SendMessage _ -> return state
   | GetInfo -> get_info state; return state
   | ExitSession -> exit_session state
