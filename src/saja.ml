@@ -313,8 +313,8 @@ let start_session state username_list =
   | Some [] -> print_system ("Please provide a list of usernames. For example,"
                              ^" ':startsession alice bob'\n"); return state
   | Some users ->
-    if state.current_chat <> None then 
-      print_system "Left last chat.\n" 
+    if state.current_chat <> None then
+      print_system "Left last chat.\n"
     else ();
     let (init_body, chat, dest_spec) =
       Chat.create users |>
@@ -325,7 +325,7 @@ let start_session state username_list =
       (print_system "Sent invites.\n";
        handle_leave_chat state >>| fun _ ->
        new_state)
-    else (print_system "Failed to start chat.\n"; 
+    else (print_system "Failed to start chat.\n";
           return state)
   | None -> print_error "Unable to resolve usernames.\n"; return state
 
@@ -536,6 +536,14 @@ let check_for_user_key keys =
   else
     return keys
 
+let start_listening port callback =
+  let kill_port = "Kill processes in the port to continue.\n" in
+  listen port callback >>| (fun suc ->
+      if suc then ()
+      else (printf_error "\nAccess denied to port: %n. " port;
+            print_error kill_port; print_error "Saja is exiting.\n";
+            ignore (Async.Std.exit(0))))
+
 let rec prompt_password () =
   print_system
     "Please enter your password. If this is your first time, type in your desired password.\n";
@@ -568,7 +576,7 @@ let _ =
   print_system "Psst. You new around here? Type :help for help.\n";
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
-  let _ = listen chat_port handle_incoming_message in
+  let _ = start_listening chat_port handle_incoming_message in
   let _ = Discovery.start_listening () in
   let _ = prompt_password() >>| fun state -> main true state in
   let _ = Signal.handle [Signal.of_string "sigint"]
