@@ -220,7 +220,7 @@ let process_msg_messsage state from session_id body =
   match received with
   | None -> return state
   | Some chat_state ->
-    printf_username "\n@%s: " from.user.username;
+    printf_username "@%s: " from.user.username;
     printf_message "%s\n" body;
     return
       {
