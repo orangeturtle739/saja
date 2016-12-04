@@ -139,7 +139,7 @@ let send_message state session_id username ip_address message_body =
 let send_group_message state message_body dest_spec =
   List.map (fun (session_id, username, ip) ->
       send_message state session_id username ip message_body) dest_spec |>
-  Deferred.all >>| List.for_all (fun x -> x)
+  Deferred.all >>| List.for_all not >>| not
 
 
 (* Tries to resolve a username to an online user.
