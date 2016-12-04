@@ -6,16 +6,11 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{hyperref}
 \usepackage{placeins}
 \usepackage{listings, lstautogobble}
 \usepackage{float}
 \graphicspath{ {/} }
 \lstset{basicstyle=\ttfamily}
-\hypersetup{
-    colorlinks=true,
-    urlcolor=blue
-}
 
 \title{SAJA: Encrypted Peer-to-Peer Messaging}
 \author{\textbf{S}iddant Basnet (sb846) \\ \textbf{A}lex Libman (asl237)\\ \textbf{J}acob Glueck (jng55), \\ \textbf{A}mit Mizrahi (am2269)}
@@ -33,44 +28,21 @@ SAJA is a peer-to-peer encrypted messaging system designed for communication bet
 \subsection{Key Features}
 \begin{itemize}
 	\item UDP based discovery of other connected users on the same network
-	\item End-to-end encrypted messaging
+	\item Encrypted messaging
 	\item Group messaging
 	\item Ability to set a username
-	\item Can export chat log to file
+	\item Can export chat log to .txt file
 \end{itemize}
 
 \subsection{Description}
 A sample user starts the program and has the option to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. The user can choose to message any number of these users, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
 
-All messages sent using this system are encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user maintains a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program verifies that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model). Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients verify the signature.
+All messages sent using this system will be encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user will maintain a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program will verity that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model.) Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients will verify the signature.
 
 \subsection{Sample Session}
 \begin{lstlisting}
-You have been invited to a chat with:
-  * @moby (192.168.1.232)
-  * @rick (192.168.1.15)
-  * @morty (192.168.1.103)
-Would you like to join the chat? [y/n]
-Joined chat.
-@rick joined
-@morty joined
-@jim: Hello, folks!
-@moby: We are all here!
-@rick: Hello guys what's up!
-@morty: Hey!
-@moby: It works!
-@jim: I sure am glad to be chatting with you.
-@rick: Why I had such a great day today!
-@jim: Great to hear.
-@moby: Now we are safe from snoopers.
-@jim: Woot!
-@morty: Does anyone know how to clean orange juice off of dress pants?
-@moby left the chat
-@rick left the chat
-@jim left the chat
-\end{lstlisting}
 
-A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8ww5i36jjpck3dz6}{here}.
+\end{lstlisting}
 
 \section{Design}
 \subsection{Architecture}
@@ -103,32 +75,18 @@ A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8w
 	\caption{Module Dependency Diagram}
 \end{figure}
 \subsection{Data}
-
 The data our system maintains is a keychain mapping between username strings and public keys. The message persistence maintains a store of the messages sent and received during the current session. We will use JSON to store this data. We are going to make use of maps for our keychain and message persistence.
 
-\subsection{Dependencies}
-
-OPAM packages. These are also found in  \texttt{packages.txt} in the root directory. Running \texttt{make install} in the root directory will install all of them.
-
+\subsection{External Dependencies}
 \begin{itemize}
-    \item async
-    \item async-extra
-    \item cryptokit
-    \item ctypes
-    \item ctypes-foreign
-    \item scrypt
-\end{itemize}
-
-External dependencies. We recommend downloading these on an Ubuntu system (like the VM) using \textit{apt-get}.
-
-\begin{itemize}
- \item tmux
- \item libssl
- \item libffi-dev
+	\item YoJSON
+	\item Cryptokit
+	\item TCP (Jane Street)
+	\item UDP (Jane Street)
 \end{itemize}
 
 \subsection{Testing Plan}
-We tested regularly using an interactive testing strategy. We will also write integration tests. If one of our team members does not properly test their code or otherwise writes poorly formatted / incorrect code, we will convene a code review board consisting of the other 3 members of team. If someone writes bad code, we will relegate them to Specification Duty, which means they can only write comments or design documents until further notice.
+We will test regularly, using a bottom-up testing strategy, implementing small pieces of functionality and testing each piece independently. We will also write integration tests. If one of our team members does not properly test their code or otherwise writes poorly formatted / incorrect code, we will convene a code review board consisting of the other 3 members of team. If someone writes bad code, we will relegate them to Specification Duty, which means they can only write comments or design documents until further notice.
 
 \section{Protocol}
 \subsection{Initiation}
@@ -149,23 +107,17 @@ Each encrypted message will be signed using a separate RSA key.
 
 \section{Division of Labor}
 
-All four team members collaborated on the main controller module in \textit{saja.ml} and fixed bugs that came up.
-
-
 \begin{itemize}
+    All four team members collaborated on the main controller module in \textit{saja.ml}.\\
 
-        \item Siddant: Worked on TCP module. Implemented helper functions for formatting and printing.\\
+        \item \textbf{S}iddant - [Chief Network Engineer] Architected TCP messaging system. Implemented helper functions for formatting and printing.\\
 
-        \item Alex: Developed persistence module and related portions of the controller.\\
+        \item \textbf{A}lex - [Chief Persistence Engineer] Developed persistence module and related portions of the controller.\\
 
-        \item Jacob: Implemented cryptography module, worked on UDP module, created message transport protocol, used tmux to display chat and prompt in separate windows. \\
+        \item \textbf{J}acob - [Specification Czar] Created Gitignore file.\\
 
-        \item Amit: Worked on UDP module, defined and implemented frontend user experience. \\
-
+        \item \textbf{A}mit - Defined console user experience \\
 \end{itemize}
 
-\section{Compatibility Issues}
-
-Due to issues with Jane Street's UDP library, the broadcast function does not work with Mac OS X, so the \texttt{:discovery} command will not work on a Mac.
 
 \end{document}
