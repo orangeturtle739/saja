@@ -1,4 +1,4 @@
-type body = Msg of string | Init of (string * string) list
+type body = Msg of string | Init of (string * string) list | Join | Exit
 type message
 
 val to_string: message -> string

@@ -1,17 +1,27 @@
 open Maybe
 
-type body = Msg of string | Init of (string*string) list
+type body = Msg of string | Init of (string * string) list | Join | Exit
 type message = string * body
 
-let init_str = "init"
-let msg_str = "msg"
+let msg_id = "msg"
+let init_id = "init"
+let join_id = "join"
+let exit_id = "exit"
+
+let msg_str = function
+  | Msg _ -> msg_id
+  | Init _ -> init_id
+  | Join -> join_id
+  | Exit -> exit_id
 
 let body_to_string = function
-  | Msg str -> [msg_str; str]
-  | Init lst -> init_str::(List.map (fun (a, b) -> a^" "^b) lst)
+  | Msg str -> [str]
+  | Init lst -> (List.map (fun (a, b) -> a^" "^b) lst)
+  | Join | Exit -> []
 
-let to_string (session_id, body) = session_id::(body_to_string body) |>
-                                   String.concat "\n"
+let to_string (session_id, body) =
+  session_id::(msg_str body)::(body_to_string body) |>
+  String.concat "\n"
 
 let pair_split delim str = Str.bounded_split (Str.regexp delim) str 2
 
@@ -26,9 +36,11 @@ let parse_init_body body =
 let body_from_string str =
   pair_split "\n" str |>
   pairify >>>= fun (msg_type, body) ->
-  if msg_type = init_str then parse_init_body body >>>| (fun ibody ->
+  if msg_type = init_id then parse_init_body body >>>| (fun ibody ->
       Init ibody)
-  else if msg_type = msg_str then Some (Msg body)
+  else if msg_type = msg_id then Some (Msg body)
+  else if msg_type = join_id then Some Join
+  else if msg_type = exit_id then Some Exit
   else None
 
 let from_string str =

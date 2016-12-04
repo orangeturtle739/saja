@@ -35,10 +35,21 @@ let receive_msg from session_id msg state =
   maybe_eq state.session_id session_id >>>| fun _ ->
   { state with messages = (from.user.username, msg)::state.messages; }
 
+let receive_join from session_id state =
+  maybe_eq state.session_id session_id >>>| fun _ ->
+  { state with messages = (from.user.username, "join")::state.messages; }
+
+let receive_exit from session_id state =
+  maybe_eq state.session_id session_id >>>| fun _ ->
+  { state with messages = (from.user.username, "exit")::state.messages; }
+
+let gen_dest_spec state =
+  List.map (fun {user={username; public_key=_}; ip_address} ->
+      (state.session_id, username, ip_address)) state.online_users
+
 let send_msg my_name msg state =
-  let id_ip_list = List.map (fun {user={username; public_key=_}; ip_address} ->
-      (state.session_id, username, ip_address)) state.online_users in
-  ({ state with messages = (my_name, msg)::state.messages; }, id_ip_list)
+  (Message.Msg msg, { state with messages = (my_name, msg)::state.messages; },
+   gen_dest_spec state)
 
 let send_init my_name state =
   let users = state.online_users in
@@ -46,9 +57,18 @@ let send_init my_name state =
   let hash_list = List.map (fun online_user ->
       Crypto.fingerprint online_user.user.public_key) users in
   let ip_fp_list = List.combine ip_list hash_list in
-  let (new_state, dest_spec) = send_msg my_name "init" state in
   (Message.Init ip_fp_list,
-   { new_state with session_id = Crypto.advance state.session_id; },
-   dest_spec)
+   { state with session_id = Crypto.advance state.session_id;
+                messages = (my_name, "init")::state.messages; },
+   gen_dest_spec state)
+
+let send_join my_name state =
+  (Message.Join, { state with messages = (my_name, "join")::state.messages; },
+   gen_dest_spec state)
+
+let send_exit my_name state =
+  (Message.Exit, { state with messages = (my_name, "exit")::state.messages; },
+   gen_dest_spec state)
+
 
 let msg_log state = state.messages
