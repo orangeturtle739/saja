@@ -1,6 +1,6 @@
 # SAJA: Encrypted Peer-to-Peer Messaging}
 _Saja_ (adj.) - "Calm, serene." [Arabic]
-## Authors:
+## Authors
 * **S**iddant Basnet (sb846)
 * **A**lex Libman (asl237)
 * **J**acob Glueck (jng55)
@@ -56,17 +56,17 @@ Joined chat.
 
 ### OPAM packages
 These are also found in `packages.txt`. Running `make install` in the top-level directory will install all of them.
-* async
-* async-extra
-* cryptokit
-* ctypes
-* ctypes-foreign
-* scrypt
+* `async`
+* `async-extra`
+* `cryptokit`
+* `ctypes`
+* `ctypes-foreign`
+* `scrypt`
 
 ### External dependencies
-* tmux
-* libssl-dev
-* libffi-dev
+* `tmux`
+* `libssl-dev`
+* `libffi-dev`
 
 ## Protocol
 
