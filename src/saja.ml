@@ -218,7 +218,7 @@ let process_msg_messsage state from session_id body =
     return { state with current_chat = Some chat_state; }
 
 (* Processes an incoming join message_buf *)
-let process_join_messsage state from session_id =
+let process_join_message state from session_id =
   let received = state.current_chat >>>=
     Chat.receive_join from session_id in
   match received with
@@ -228,7 +228,7 @@ let process_join_messsage state from session_id =
     return { state with current_chat = Some chat_state; }
 
 (* Processes an incoming exit message_buf *)
-let process_exit_messsage state from session_id =
+let process_exit_message state from session_id =
   let received = state.current_chat >>>=
     Chat.receive_exit from session_id in
   match received with
@@ -259,8 +259,8 @@ let process_message state origin_user message =
   match Message.body message with
   | Message.Msg body -> return (false, process_msg_messsage state origin_user session_id body)
   | Message.Init body -> process_init_message state origin_user session_id body
-  | Message.Join -> failwith "foo"
-  | Message.Exit -> failwith "Foo"
+  | Message.Join -> return (false, process_join_message state origin_user session_id)
+  | Message.Exit -> return (false, process_exit_message state origin_user session_id)
 
 (* Handles an incoming network message *)
 let handle_received_message state addr str =
