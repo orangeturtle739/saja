@@ -18,7 +18,7 @@
 }
 
 \title{SAJA: Encrypted Peer-to-Peer Messaging}
-\author{\textbf{S}iddant Basnet (sb846) \\ \textbf{A}lex Libman (asl237)\\ \textbf{J}acob Glueck (jng55), \\ \textbf{A}mit Mizrahi (am2269)}
+\author{\textbf{S}iddant Basnet (sb846) \\ \textbf{A}lex Libman (asl237)\\ \textbf{J}acob Glueck (jng55) \\ \textbf{A}mit Mizrahi (am2269)}
 \date{}
 
 \begin{document}
@@ -35,12 +35,14 @@ SAJA is a peer-to-peer encrypted messaging system designed for communication bet
 	\item UDP based discovery of other connected users on the same network
 	\item End-to-end encrypted messaging
 	\item Group messaging
-	\item Ability to set a username
-	\item Can export chat log to file
+	\item Setting a username
+	\item Exporting a chat log to a file
 \end{itemize}
 
 \subsection{Description}
-A sample user starts the program and has the ability to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. Alternatively, the user can manually send keys by using the \texttt{:transmit} command and process received keys from others using the \texttt{:process} command. The user can choose to message any number of users that they know the details of, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
+A sample user starts the program and has the ability to send out a UDP broadcast to discover other online users on the same network using the \texttt{:discover} command. This lists the IP addresses, user names, and public keys of these connected users. Alternatively, the user can manually send keys by using the \texttt{:transmit} command and process received keys from others using the \texttt{:process} command.\\
+
+The user can choose to message any number of users that they know the details of, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.\\
 
 All messages sent using this system are encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user maintains a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program verifies that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model). Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients verify the signature.
 
@@ -70,7 +72,7 @@ Joined chat.
 @jim left the chat
 \end{lstlisting}
 
-A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8ww5i36jjpck3dz6}{here}.
+A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8ww5i36jjpck3dz6}{here}.\\
 
 \section{Design}
 \subsection{Architecture}
@@ -104,11 +106,11 @@ A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8w
 \end{figure}
 \subsection{Data}
 
-The data our system maintains is a keychain mapping between username strings and public keys. The message persistence maintains a store of the messages sent and received during the current session. We will use JSON to store this data. We are going to make use of maps for our keychain and message persistence.
+The data our system maintains is a keychain mapping between username strings and public keys. This keychain stores your own private key, so it is encrypted before being written to disk. The message persistence module maintains a store of the messages sent and received during the current session. We use JSON to store this data. We use the OCaml standard library \texttt{Map} for our keychain and message persistence.
 
 \subsection{Dependencies}
 
-OPAM packages. These are also found in  \texttt{packages.txt} in the root directory. Running \texttt{make install} in the root directory will install all of them.
+\textbf{OPAM packages}. These are also found in  \texttt{packages.txt} in the root directory. Running \texttt{make install} in the top-level directory will install all of them.
 
 \begin{itemize}
     \item async
@@ -119,7 +121,7 @@ OPAM packages. These are also found in  \texttt{packages.txt} in the root direct
     \item scrypt
 \end{itemize}
 
-External dependencies. We recommend downloading these on an Ubuntu system (like the VM) using \textit{apt-get}.
+\textbf{External dependencies}. We recommend downloading these on an Ubuntu system (like the VM) using \textit{apt-get}.
 
 \begin{itemize}
  \item tmux
@@ -128,26 +130,34 @@ External dependencies. We recommend downloading these on an Ubuntu system (like 
 \end{itemize}
 
 \subsection{Testing Plan}
-We tested regularly using an interactive testing strategy. We will also write integration tests. If one of our team members does not properly test their code or otherwise writes poorly formatted / incorrect code, we will convene a code review board consisting of the other 3 members of team. If someone writes bad code, we will relegate them to Specification Duty, which means they can only write comments or design documents until further notice.
+We tested regularly using an interactive testing strategy, meeting regularly to test one-on-one and multi-user chats. We also wrote unit tests for cryptography.
 
 \section{Protocol}
+
+\subsection{Discovery}
+
+If the usernames are not in the local key store, the program will emit a UDP broadcast to acquire unknown public keys. It will then prompt the user to validate the key fingerprints of the received keys. If the user validates the fingerprints, it will store them permanently in the key store for future use.
+
 \subsection{Initiation}
-When a user wishes to start a chat, they will enter the usernames of the people they wish to chat with. If the usernames are not in the local key store, the program will emit a UDP broadcast to acquire unknown public keys. It will then prompt the user to validate the key fingerprints of the received keys. If the user validates the fingerprints, it will store them permanently in the key store for future use.
-
-The initiator will then send a message to each of the other members of the group containing a unique session ID (different for each member) and a list of all other members in the chat.
-
-Upon receiving an invitation to a chat, the user will verify that all the usernames and fingerprints received in the invitation match those stored in the key store. If not, it will ask the user for verification. If the user verifies them, it will store them in the local key store.
+When a user wishes to start a chat, they will enter the usernames of the people they wish to chat with. The initiator will then send a message to each of the other members of the group containing a unique session ID (different for each member) and a list of all other members in the chat.\\
 
 \subsection{Message Transport}
-Message transport will be done pairwise, with each client sending a message individually to each other member of the group. Each chat has a session ID associated with it. The session id is set at initialization, and upon receiving the initialization message, each client hashs the sesssion ID to use as the session ID for the chat. When a client responds to the message, they will include this hashed session ID. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious.
+Message transport will be done pairwise, with each client sending a message individually to each other member of the group. Each chat has a session ID associated with it. The session id is set at initialization, and upon receiving the initialization message, each client hashes the sesssion ID to use as the session ID for the chat.\\
+
+When a client responds to the message, they will include this hashed session ID. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious.
 
 \subsection{Encryption}
 We used a hybrid-encryption scheme using 4096-bit RSA and 256-bit AES. RSA will be used to encrypt a session key for each message, and the body of the message will be encrypted using AES with that session key. The AES will use cipher block chaining.\\
 
 \subsection{Key Verification}
-In order for the cryptosystem to be secure, each client must verify the keys of each user they communicate with over some secure channel, preferably in person. The program provides a \texttt{:fingerprint} command which prints out the public key fingerprint of the current user. The fingerprint is generated using a SHA-512 hash of the public encryption and signing keys. A user can transmit their key to any other user by broadcasting it over UDP using \texttt{:discover} or directly with \texttt{:transmit <username | IP>}. Upon receiving a key, a user can add it to their keychain with \texttt{:process} (\texttt{:discover} will automatically invoke \texttt{:process} on any keys it receives; \texttt{:process} is only necessary when \texttt{:transmit} is used). If there is no entry for the username in the keychain, the program will prompt the user to verify the fingerprint. If the key is already in the keychain and matches the one received, then the program will inform the user that it discovered a peer. If the user discovered is already stored in the keychain, but the key stored in the keychain does not match the key received, the program prints out a warning advising the user to reject the key because they user is probably the target of a man in the middle attack.
+In order for the cryptosystem to be secure, each client must verify the keys of each user they communicate with over some secure channel, preferably in person. The program provides a \texttt{:fingerprint} command which prints out the public key fingerprint of the current user. The fingerprint is generated using a SHA-512 hash of the public encryption and signing keys.\\
+
+A user can transmit their key to any other user by broadcasting it over UDP using \texttt{:discover} or directly with \texttt{:transmit <username | IP>}. Upon receiving a key, a user can add it to their keychain with \texttt{:process} (\texttt{:discover} will automatically invoke \texttt{:process} on any keys it receives; \texttt{:process} is only necessary when \texttt{:transmit} is used).\\
+
+If there is no entry for the username in the keychain, the program will prompt the user to verify the fingerprint. If the key is already in the keychain and matches the one received, then the program will inform the user that it discovered a peer. If the user discovered is already stored in the keychain, but the key stored in the keychain does not match the key received, the program prints out a warning advising the user to reject the key because they user is probably the target of a man in the middle attack.
 
 \subsection{Integrity}
+
 Each encrypted message is hashed with SHA-512 and then signed using a separate signing RSA key.
 
 \subsection{Attack Analysis}
@@ -173,6 +183,15 @@ All four team members collaborated on the main controller module in \textit{saja
         \item Amit: Worked on UDP module, defined and implemented frontend user experience. \\
 
 \end{itemize}
+
+\section{Build Instructions}
+
+\begin{enumerate}
+    \item Install dependencies if needed.
+    \item Run \texttt{make run} in the top-level directory.
+\end{enumerate}
+
+Note: Running \texttt{make debug} will run the version without tmux.
 
 \section{Compatibility Issues}
 
