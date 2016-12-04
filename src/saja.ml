@@ -395,18 +395,18 @@ let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
   let ntokens = List.filter (fun a -> a<>"") tokens in
   match ntokens with
-  | [":discover"] -> Discover
-  | [":quit"] -> QuitProgram
-  | [":help"] -> Help
-  | [":process"] -> ProcessUsers
-  | [":info"] -> GetInfo
-  | [":exitsession"] -> ExitSession
-  | ":transmit"::[ip] -> TransmitKeys ip
-  | ":startsession"::t -> StartSession t
-  | [":fingerprint"] -> FingerprintU
-  | ":fingerprint"::[u] -> Fingerprint u
-  | [":keys"] -> Keys
-  | [":savechat"; file] -> SaveChat file  
+  | [":discover"] | [":d"] -> Discover
+  | [":quit"] | [":q"] -> QuitProgram
+  | [":help"] | [":h"] -> Help
+  | [":process"] | [":p"] -> ProcessUsers
+  | [":info"] | [":i"] -> GetInfo
+  | [":exitsession"] | [":es"] -> ExitSession
+  | [":transmit"; ip] | [":t"; ip] -> TransmitKeys ip
+  | ":startsession"::t | ":ss"::t -> StartSession t
+  | [":fingerprint"] | [":fp"] -> FingerprintU
+  | [":fingerprint"; u] | [":fp"; u]-> Fingerprint u
+  | [":keys"] | [":k"] -> Keys
+  | [":savechat"; file] | [":sc"; file] -> SaveChat file  
   | _ -> SendMessage s
 
 (* Main loop *)
