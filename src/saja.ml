@@ -213,6 +213,11 @@ let process_init_message state origin_user session_id body =
     ) else return (true, return state)
   | None -> return (false, return state)
 
+(* Prints username and message nicely *)
+let print_user_msg username msg =
+  printf_username "@%s: " username;
+  printf_message "%s\n" msg
+
 (* Processes an incoming message *)
 let process_msg_messsage state from session_id body =
   let received = state.current_chat >>>=
@@ -220,8 +225,7 @@ let process_msg_messsage state from session_id body =
   match received with
   | None -> return state
   | Some chat_state ->
-    printf_username "@%s: " from.user.username;
-    printf_message "%s\n" body;
+    print_user_msg from.user.username body;
     return
       {
         state with
@@ -284,8 +288,9 @@ let handle_send_message state msg exit =
       Chat.send_msg (Keypersist.retrieve_username state.keys) msg chat_state in
     send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
     if exit then return {state with current_chat = Some new_chat}
-    else (if not worked then print_error "Unable to send message\n" else ();
-    return {state with current_chat = Some new_chat})
+    else (if not worked then print_error "Unable to send message\n"
+          else print_user_msg (Keypersist.retrieve_username state.keys) msg;
+          return {state with current_chat = Some new_chat})
 
 (* Tries to exit the current session *)
 let exit_session state =
@@ -350,10 +355,10 @@ let safe_exit state =
    a new program state with the action executed. *)
 let execute (command: action) (state: program_state) : program_state Deferred.t =
   match command with
-  | Discover -> handle_discovery state
-  | StartSession user_lst -> start_session state user_lst
-  | QuitProgram -> safe_exit state
-  | Help ->
+  | Discover -> print_normal ":discover\n"; handle_discovery state
+  | StartSession user_lst -> print_normal ":startsession\n"; start_session state user_lst
+  | QuitProgram -> print_normal ":quit\n"; safe_exit state
+  | Help -> print_normal ":help\n";
     print_system
       ("---------------\n"^
        "Saja (adj) - Wise, sensible. [Ido language]\n"^
@@ -368,7 +373,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":exitsession -> Exits the messaging session (but not the program). \n"^
        ":transmit <ip-addr> -> Manually transmits your public key to an IP address. \n"^
        ":process -> Processes any public keys that have been manually sent to you. \n"^
-       ":fingerprint -> Shows your fingerprint."^
+       ":fingerprint -> Shows your fingerprint.\n"^
        ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"^
        ":savechat <file> -> Saves the current chat log to file.\n"
@@ -376,32 +381,32 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
     return state
   | SendMessage msg when msg <> "" -> handle_send_message state msg false
   | SendMessage _ -> return state
-  | GetInfo -> get_info state; return state
-  | ExitSession -> exit_session state
-  | TransmitKeys ip -> transmit_keys ip >>| fun _ -> state
-  | ProcessUsers -> process_users state
-  | Fingerprint u -> process_fingerprint state u; return state
-  | FingerprintU -> own_fingerprint state; return state
-  | Keys -> list_keys state; return state
-  | SaveChat file -> save_chat file state; return state
+  | GetInfo -> print_normal ":info\n"; get_info state; return state
+  | ExitSession -> print_normal ":exitsession\n"; exit_session state
+  | TransmitKeys ip -> printf_normal ":transmit %s\n" ip; transmit_keys ip >>| fun _ -> state
+  | ProcessUsers -> printf_normal ":process\n"; process_users state
+  | Fingerprint u -> printf_normal ":fingerprint %s\n" u; process_fingerprint state u; return state
+  | FingerprintU -> printf_normal ":fingerprint\n"; own_fingerprint state; return state
+  | Keys -> printf_normal ":keys\n"; list_keys state; return state
+  | SaveChat file -> printf_normal ":savechat %s\n" file; save_chat file state; return state
 
 (* Parses a string into an action *)
 let action_of_string (s: string) : action =
   let tokens = Str.split (Str.regexp " ") s in
   let ntokens = List.filter (fun a -> a<>"") tokens in
   match ntokens with
-  | [":discover"] -> Discover
-  | [":quit"] -> QuitProgram
-  | [":help"] -> Help
-  | [":process"] -> ProcessUsers
-  | [":info"] -> GetInfo
-  | [":exitsession"] -> ExitSession
-  | ":transmit"::[ip] -> TransmitKeys ip
-  | ":startsession"::t -> StartSession t
-  | [":fingerprint"] -> FingerprintU
-  | ":fingerprint"::[u] -> Fingerprint u
-  | [":keys"] -> Keys
-  | [":savechat"; file] -> SaveChat file
+  | [":discover"] | [":d"] -> Discover
+  | [":quit"] | [":q"] -> QuitProgram
+  | [":help"] | [":h"] -> Help
+  | [":process"] | [":p"] -> ProcessUsers
+  | [":info"] | [":i"] -> GetInfo
+  | [":exitsession"] | [":es"] -> ExitSession
+  | [":transmit"; ip] | [":t"; ip] -> TransmitKeys ip
+  | ":startsession"::t | ":ss"::t -> StartSession t
+  | [":fingerprint"] | [":fp"] -> FingerprintU
+  | [":fingerprint"; u] | [":fp"; u]-> Fingerprint u
+  | [":keys"] | [":k"] -> Keys
+  | [":savechat"; file] | [":sc"; file] -> SaveChat file
   | _ -> SendMessage s
 
 (* Main loop *)
