@@ -6,63 +6,71 @@
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{hyperref}
 \usepackage{placeins}
 \usepackage{listings, lstautogobble}
 \usepackage{float}
 \graphicspath{ {/} }
 \lstset{basicstyle=\ttfamily}
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue
+}
 
-\title{Final Project Charter}
-\author{Alex Libman (asl237), Jacob Glueck (jng55), \\Amit Mizrahi (am2269), Siddant Basnet (sb846)}
+\title{SAJA: Encrypted Peer-to-Peer Messaging}
+\author{\textbf{S}iddant Basnet (sb846) \\ \textbf{A}lex Libman (asl237)\\ \textbf{J}acob Glueck (jng55), \\ \textbf{A}mit Mizrahi (am2269)}
 \date{}
 
 \begin{document}
 \maketitle
 
+\textbf{Saja} (adj.) - ``Calm, serene.'' [Arabic]
+
 \section{Proposal}
 \subsection{Vision}
-A peer-to-peer encrypted messaging system designed for communication between people on the same network.
+SAJA is a peer-to-peer encrypted messaging system designed for communication between people on the same network.
 
 \subsection{Key Features}
 \begin{itemize}
-	\item UDP based discovery of other connected users on the same network 
-	\item Encrypted messaging
+	\item UDP based discovery of other connected users on the same network
+	\item End-to-end encrypted messaging
 	\item Group messaging
 	\item Ability to set a username
-	\item Can export chat log to .txt file
+	\item Can export chat log to file
 \end{itemize}
 
 \subsection{Description}
 A sample user starts the program and has the option to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. The user can choose to message any number of these users, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
 
-All messages sent using this system will be encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user will maintain a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program will verity that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model.) Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients will verify the signature.
+All messages sent using this system are encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user maintains a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program verifies that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model). Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients verify the signature.
 
 \subsection{Sample Session}
 \begin{lstlisting}
-> :discover
-
-IP Address		Username	RSA Fingerprint
-192.168.4.7		libman		4E8D A652 8149 72C7 ...
-192.168.16.3		sid		E4A7 2584 62C7 3274 ...
-
-> :message libman sid
-
-Creating group...
-Warning: Fingerprint for `libman` 
-does not match fingerprint found in keychain.
-Are you sure you wish to proceed? (Y/n) y
-
-Session started. Session UUID: 4b4e24c3-aa5c-42cf-8f0d-3187948201a3
-
-system: @libman (192.168.4.7) has connected.
-system: @sid (192.168.16.3) has connected.
-libman: what's up
-sid: hi
-
-> hello!
-		
-
+You have been invited to a chat with:
+  * @moby (192.168.1.232)
+  * @rick (192.168.1.15)
+  * @morty (192.168.1.103)
+Would you like to join the chat? [y/n]
+Joined chat.
+@rick joined
+@morty joined
+@jim: Hello, folks!
+@moby: We are all here!
+@rick: Hello guys what's up!
+@morty: Hey!
+@moby: It works!
+@jim: I sure am glad to be chatting with you.
+@rick: Why I had such a great day today!
+@jim: Great to hear.
+@moby: Now we are safe from snoopers.
+@jim: Woot!
+@morty: Does anyone know how to clean orange juice off of dress pants?
+@moby left the chat
+@rick left the chat
+@jim left the chat
 \end{lstlisting}
+
+A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8ww5i36jjpck3dz6}{here}.
 
 \section{Design}
 \subsection{Architecture}
@@ -84,29 +92,43 @@ sid: hi
 	\item \textbf{Console}: wrapper over STDIN, STDOUT
 	\item \textbf{Broadcast}: sends UDP broadcast to find other users on network
 	\item \textbf{Message Transport}: sends encrypted messages over the network via TCP
-	\item \textbf{Keychain Persistence}: stores mapping of usernames to public keys in memory and formats for writing to a file 
+	\item \textbf{Keychain Persistence}: stores mapping of usernames to public keys in memory and formats for writing to a file
 	\item \textbf{Message Persistence}: lets user write chat log to file before exiting
 	\item \textbf{Persistence}: a general wrapper for writing data structures to files
 	\item \textbf{Crypto}: handles encryption, decryption, and verification
-	\item \textbf{Controller}: takes textual input from user and carries out actions based on command 
+	\item \textbf{Controller}: takes textual input from user and carries out actions based on command
 \end{itemize}
 \begin{figure}[H]
 	\includegraphics[scale=0.75]{"Module Dependency Diagram".pdf}
 	\caption{Module Dependency Diagram}
 \end{figure}
 \subsection{Data}
-The data our system maintains is a keychain mapping between username strings and public keys. The message persistence maintains a store of the messages sent and received during the current session. We will use JSON to store this data. We are going to make use of maps for our keychain and message persistence. 
 
-\subsection{External Dependencies}
+The data our system maintains is a keychain mapping between username strings and public keys. The message persistence maintains a store of the messages sent and received during the current session. We will use JSON to store this data. We are going to make use of maps for our keychain and message persistence.
+
+\subsection{Dependencies}
+
+OPAM packages. These are also found in  \texttt{packages.txt} in the root directory. Running \texttt{make install} in the root directory will install all of them.
+
 \begin{itemize}
-	\item YoJSON
-	\item Cryptokit
-	\item Tcpip
-	\item UDP (Jane Street)
+    \item async
+    \item async-extra
+    \item cryptokit
+    \item ctypes
+    \item ctypes-foreign
+    \item scrypt
+\end{itemize}
+
+External dependencies. We recommend downloading these on an Ubuntu system (like the VM) using \textit{apt-get}.
+
+\begin{itemize}
+ \item tmux
+ \item libssl
+ \item libffi-dev
 \end{itemize}
 
 \subsection{Testing Plan}
-We will test regularly, using a bottom-up testing strategy, implementing small pieces of functionality and testing each piece independently. We will also write integration tests. If one of our team members does not properly test their code or otherwise writes poorly formatted / incorrect code, we will convene a code review board consisting of the other 3 members of team. If someone writes bad code, we will relegate them to Specification Duty, which means they can only write comments or design documents until further notice.
+We tested regularly using an interactive testing strategy. We will also write integration tests. If one of our team members does not properly test their code or otherwise writes poorly formatted / incorrect code, we will convene a code review board consisting of the other 3 members of team. If someone writes bad code, we will relegate them to Specification Duty, which means they can only write comments or design documents until further notice.
 
 \section{Protocol}
 \subsection{Initiation}
@@ -117,13 +139,33 @@ The initiator will then send a message to each of the other members of the group
 Upon receiving an invitation to a chat, the user will verify that all the usernames and fingerprints received in the invitation match those stored in the key store. If not, it will ask the user for verification. If the user verifies them, it will store them in the local key store.
 
 \subsection{Message Transport}
-Message transport will be done pairwise, with each client sending a message individually to each other member of the group. When a client responds to the message, the session ID of the response will be equal to a hash of the session ID of the message being responded to. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious. Furthermore, the session ID provides a sequencing mechanism for the messages. This is important for security, as discussed in Clarkson's CS 5430 course. 
+Message transport will be done pairwise, with each client sending a message individually to each other member of the group. When a client responds to the message, the session ID of the response will be equal to a hash of the session ID of the message being responded to. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious. Furthermore, the session ID provides a sequencing mechanism for the messages. This is important for security, as discussed in Clarkson's CS 5430 course.
 
-\subsection{Encryption} 
-We will use a hybrid-encryption scheme using RSA and AES. RSA will be used to encrypt a session key for each message, and the body of the message will be encrypted using AES with that session key. The AES will use cipher block chaining.
+\subsection{Encryption}
+We used a hybrid-encryption scheme using 4096-bit RSA and AES. RSA will be used to encrypt a session key for each message, and the body of the message will be encrypted using AES with that session key. The AES will use cipher block chaining.\\
 
 \subsection{Integrity}
 Each encrypted message will be signed using a separate RSA key.
 
+\section{Division of Labor}
+
+All four team members collaborated on the main controller module in \textit{saja.ml} and fixed bugs that came up.
+
+
+\begin{itemize}
+
+        \item Siddant: Worked on TCP module. Implemented helper functions for formatting and printing.\\
+
+        \item Alex: Developed persistence module and related portions of the controller.\\
+
+        \item Jacob: Implemented cryptography module, worked on UDP module, created message transport protocol, used tmux to display chat and prompt in separate windows. \\
+
+        \item Amit: Worked on UDP module, defined and implemented frontend user experience. \\
+
+\end{itemize}
+
+\section{Compatibility Issues}
+
+Due to issues with Jane Street's UDP library, the broadcast function does not work with Mac OS X, so the \texttt{:discovery} command will not work on a Mac.
 
 \end{document}
