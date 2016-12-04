@@ -28,4 +28,5 @@ val printf_normal : ('a, unit, string, unit) format4 -> 'a
 val print_username: string -> unit
 val printf_username: ('a, unit, string, unit) format4 -> 'a
 
+val print_prompt: string -> unit
 val printf_prompt: ('a, unit, string, unit) format4 -> 'a

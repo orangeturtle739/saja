@@ -206,11 +206,11 @@ let process_init_message state origin_user session_id body =
                               Chat.send_msg my_name joining_message in
       send_group_message
         state (Message.Msg joining_message) dest_spec >>= fun worked ->
-      if not worked then (print_error "Unable to join chat\n"; return state)
+      if not worked then (print_error "Unable to join chat\n"; return (false, return state))
       else (print_system "Joined chat.\n";
-            return {state with current_chat = Some chat})
-    ) else return state
-  | None -> return state
+            return (true, return {state with current_chat = Some chat}))
+    ) else return (true, return state)
+  | None -> return (false, return state)
 
 (* Processes an incoming message *)
 let process_msg_messsage state from session_id body =
@@ -247,7 +247,7 @@ let decrypt_message state str =
 let process_message state origin_user message =
   let session_id = (Message.session_id message) in
   match Message.body message with
-  | Message.Msg body -> process_msg_messsage state origin_user session_id body
+  | Message.Msg body -> return (false, process_msg_messsage state origin_user session_id body)
   | Message.Init body -> process_init_message state origin_user session_id body
 
 (* Handles an incoming network message *)
@@ -264,14 +264,14 @@ let handle_received_message state addr str =
     } in
   match Message.from_string decrypted_message with
   | Some message -> process_message state origin_user message
-  | None -> return state
+  | None -> return (false, return state)
 
 (* Handles a message, returning the current state if the message failed
  * to process, or the new state if the message processed succesfully. *)
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
   | Some thing -> thing
-  | None -> return state
+  | None -> return (false, return state)
 
 (* Tries to send a message in the current session *)
 let handle_send_message state msg =
@@ -393,8 +393,8 @@ let action_of_string (s: string) : action =
   | _ -> SendMessage s
 
 (* Main loop *)
-let rec main program_state =
-  printf_prompt ">>= ";
+let rec main need_prompt program_state =
+  if need_prompt then printf_prompt ">>= " else ();
   choose
     [
       choice (Bqueue.recent_take message_buf) (fun (addr, str) ->
@@ -406,9 +406,10 @@ let rec main program_state =
     ] >>= fun pick ->
   (match pick with
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
-   | `ReadConsole s -> execute (action_of_string s) program_state
-   | `HandlerCalled -> safe_exit program_state)
-  >>= main
+   | `ReadConsole s -> return (true, execute (action_of_string s) program_state)
+   | `HandlerCalled -> return (false, safe_exit program_state))
+  >>= fun (need_prompt, program_state) -> program_state >>= 
+  main need_prompt
 
 (* Processes the keychain into the initial user state *)
 let process_keys_to_init keys =
@@ -513,7 +514,7 @@ let _ =
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
   let _ = Discovery.start_listening () in
-  let _ = prompt_password() >>| main in
+  let _ = prompt_password() >>| fun state -> main true state in
   let _ = Signal.handle [Signal.of_string "sigint"]
       ~f:(fun _ -> Bqueue.add () handler_buf) in
   Scheduler.go()
