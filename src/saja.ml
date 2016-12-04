@@ -39,7 +39,7 @@ type program_state = {
   current_chat: Chat.t option;
 }
 
-let is_ip str = 
+let is_ip str =
   Str.string_match (Str.regexp "[0-9].*") str 0
 
 let option_assoc key assoc =
@@ -50,7 +50,7 @@ let option_assoc key assoc =
 
 
 (* Sends the user's key to the specified IP address *)
-let transmit_keys state ip = 
+let transmit_keys state ip =
   let resolved = if is_ip ip then Some ip else option_assoc ip state.user_ips in
   match resolved with
   | Some ip -> Discovery.tcp_key_transmit ip >>| fun sent ->
@@ -517,7 +517,7 @@ let rec prompt_username keys =
         printf_system "%s" okay_message;
         Keypersist.write_username usr keys |> return
       else
-        (print_system ("Usernames may only contain letters and numbers,"^ 
+        (print_system ("Usernames may only contain letters and numbers,"^
                        " and must start with a letter.\n");
          prompt_username keys)
     | `HandlerCalled ->
@@ -545,6 +545,7 @@ let check_for_user_key keys =
   else
     return keys
 
+(* Starts listening on specified port for TCP connections *)
 let start_listening port callback =
   let kill_port = "Kill processes in the port to continue.\n" in
   listen port callback >>| (fun suc ->
@@ -553,6 +554,8 @@ let start_listening port callback =
             print_error kill_port; print_error "Saja is exiting.\n";
             ignore (Async.Std.exit(0))))
 
+(* Prompts user to enter password and starts the state initializaton
+ * loop if entered password is correct *)
 let rec prompt_password () =
   print_system
     "Please enter your password. If this is your first time, type in your desired password.\n";
