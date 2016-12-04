@@ -199,7 +199,7 @@ let process_init_message state origin_user session_id body =
   | None -> return (false, return state)
 
 (* Prints username and message nicely *)
-let print_user_msg username msg = 
+let print_user_msg username msg =
   printf_username "@%s: " username;
   printf_message "%s\n" msg
 
@@ -362,7 +362,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Discover -> print_normal ":discover\n"; handle_discovery state
   | StartSession user_lst -> print_normal ":startsession\n"; start_session state user_lst
   | QuitProgram -> print_normal ":quit\n"; safe_exit state
-  | Help -> print_normal ":help\n"; 
+  | Help -> print_normal ":help\n";
     print_system
       ("---------------\n"^
        "Saja (adj) - Wise, sensible. [Ido language]\n"^
@@ -410,7 +410,7 @@ let action_of_string (s: string) : action =
   | [":fingerprint"] | [":fp"] -> FingerprintU
   | [":fingerprint"; u] | [":fp"; u]-> Fingerprint u
   | [":keys"] | [":k"] -> Keys
-  | [":savechat"; file] | [":sc"; file] -> SaveChat file  
+  | [":savechat"; file] | [":sc"; file] -> SaveChat file
   | _ -> SendMessage s
 
 (* Main loop *)
@@ -429,7 +429,7 @@ let rec main need_prompt program_state =
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
    | `ReadConsole s -> return (true, execute (action_of_string s) program_state)
    | `HandlerCalled -> return (false, safe_exit program_state))
-  >>= fun (need_prompt, program_state) -> program_state >>= 
+  >>= fun (need_prompt, program_state) -> program_state >>=
   main need_prompt
 
 (* Processes the keychain into the initial user state *)
