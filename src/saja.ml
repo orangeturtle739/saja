@@ -571,9 +571,12 @@ let rec prompt_password () =
        prompt_username >>|
        process_keys_to_init
      with
-       Bad_password ->
+     | Bad_password ->
        print_error "Incorrect password!\n";
-       prompt_password ())
+       prompt_password ()
+     | Malformed_file ->
+       print_error "Malformed keys file. Delete it and re-run Saja.\n";
+       Async.Std.exit(0))
   | `HandlerCalled ->
     print_system "\nBye!\n";
     Async.Std.exit(0)

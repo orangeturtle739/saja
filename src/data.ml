@@ -1,4 +1,5 @@
 exception Bad_password
+exception Malformed_file
 
 (* The type of a public RSA key *)
 type public_key = {
