@@ -39,11 +39,24 @@ type program_state = {
   current_chat: Chat.t option;
 }
 
+let is_ip str = 
+  Str.string_match (Str.regexp "[0-9].*") str 0
+
+let option_assoc key assoc =
+  try
+    Some (List.assoc key assoc)
+  with
+    Not_found -> None
+
+
 (* Sends the user's key to the specified IP address *)
-let transmit_keys ip =
-  Discovery.tcp_key_transmit ip >>| fun sent ->
-  if sent then print_system "Sent key.\n" else
-    print_error "There was a problem sending your key.\n"
+let transmit_keys state ip = 
+  let resolved = if is_ip ip then Some ip else option_assoc ip state.user_ips in
+  match resolved with
+  | Some ip -> Discovery.tcp_key_transmit ip >>| fun sent ->
+    if sent then print_system "Sent key.\n" else
+      print_error "There was a problem sending your key.\n"
+  | None -> print_error "Unable to resolve username\n" |> return
 
 (* Safely adds the specified used to the keychain, prompting if needed
  * to verify the key fingerprint. *)
@@ -128,11 +141,6 @@ let send_group_message state message_body dest_spec =
       send_message state session_id username ip message_body) dest_spec |>
   Deferred.all >>| List.for_all (fun x -> x)
 
-let option_assoc key assoc =
-  try
-    Some (List.assoc key assoc)
-  with
-    Not_found -> None
 
 (* Tries to resolve a username to an online user.
  * returns: [Some user] if the username was valid and discovered,
@@ -313,8 +321,8 @@ let start_session state username_list =
   | Some [] -> print_system ("Please provide a list of usernames. For example,"
                              ^" ':startsession alice bob'\n"); return state
   | Some users ->
-    if state.current_chat <> None then 
-      print_system "Left last chat.\n" 
+    if state.current_chat <> None then
+      print_system "Left last chat.\n"
     else ();
     let (init_body, chat, dest_spec) =
       Chat.create users |>
@@ -325,7 +333,7 @@ let start_session state username_list =
       (print_system "Sent invites.\n";
        handle_leave_chat state >>| fun _ ->
        new_state)
-    else (print_system "Failed to start chat.\n"; 
+    else (print_system "Failed to start chat.\n";
           return state)
   | None -> print_error "Unable to resolve usernames.\n"; return state
 
@@ -418,7 +426,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage _ -> return state
   | GetInfo -> print_normal ":info\n"; get_info state; return state
   | ExitSession -> print_normal ":exitsession\n"; exit_session state
-  | TransmitKeys ip -> printf_normal ":transmit %s\n" ip; transmit_keys ip >>| fun _ -> state
+  | TransmitKeys ip -> printf_normal ":transmit %s\n" ip; transmit_keys state ip >>| fun _ -> state
   | ProcessUsers -> printf_normal ":process\n"; process_users state
   | Fingerprint u -> printf_normal ":fingerprint %s\n" u; process_fingerprint state u; return state
   | FingerprintU -> printf_normal ":fingerprint\n"; own_fingerprint state; return state
@@ -485,6 +493,10 @@ let process_keys_to_init keys =
     current_chat = None;
   }
 
+(* Checks whether a username is of the proper form (numbers and letters only) *)
+let valid_username usr =
+  Str.string_match (Str.regexp "^[a-zA-Z][a-zA-Z1-9]*$") usr 0
+
 (* Prompts the user for a username *)
 let rec prompt_username keys =
   let user = Keypersist.retrieve_username keys in
@@ -500,12 +512,13 @@ let rec prompt_username keys =
       ] >>= fun pick ->
     match pick with
     | `ReadUser usr ->
-      if not (String.contains usr ' ' || usr = "") then
+      if valid_username usr then
         let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
         printf_system "%s" okay_message;
         Keypersist.write_username usr keys |> return
       else
-        (print_system "Usernames can not contain spaces, or be blank.\n";
+        (print_system ("Usernames may only contain letters and numbers,"^ 
+                       " and must start with a letter.\n");
          prompt_username keys)
     | `HandlerCalled ->
       print_system "\nBye!\n";
@@ -531,6 +544,14 @@ let check_for_user_key keys =
     end
   else
     return keys
+
+let start_listening port callback =
+  let kill_port = "Kill processes in the port to continue.\n" in
+  listen port callback >>| (fun suc ->
+      if suc then ()
+      else (printf_error "\nAccess denied to port: %n. " port;
+            print_error kill_port; print_error "Saja is exiting.\n";
+            ignore (Async.Std.exit(0))))
 
 let rec prompt_password () =
   print_system
@@ -564,7 +585,7 @@ let _ =
   print_system "Psst. You new around here? Type :help for help.\n";
   (Discovery.bind_discovery
      (fun online_user -> found := online_user::(!found)));
-  let _ = listen chat_port handle_incoming_message in
+  let _ = start_listening chat_port handle_incoming_message in
   let _ = Discovery.start_listening () in
   let _ = prompt_password() >>| fun state -> main true state in
   let _ = Signal.handle [Signal.of_string "sigint"]
