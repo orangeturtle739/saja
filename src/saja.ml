@@ -289,8 +289,8 @@ let handle_send_message state msg exit =
     send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
     if exit then return {state with current_chat = Some new_chat}
     else (if not worked then print_error "Unable to send message\n"
-    else print_user_msg (Keypersist.retrieve_username state.keys) msg;
-    return {state with current_chat = Some new_chat})
+          else print_user_msg (Keypersist.retrieve_username state.keys) msg;
+          return {state with current_chat = Some new_chat})
 
 (* Tries to exit the current session *)
 let exit_session state =
