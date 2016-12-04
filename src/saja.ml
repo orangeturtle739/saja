@@ -39,11 +39,24 @@ type program_state = {
   current_chat: Chat.t option;
 }
 
+let is_ip str = 
+  Str.string_match (Str.regexp "[0-9].*") str 0
+
+let option_assoc key assoc =
+  try
+    Some (List.assoc key assoc)
+  with
+    Not_found -> None
+
+
 (* Sends the user's key to the specified IP address *)
-let transmit_keys ip =
-  Discovery.tcp_key_transmit ip >>| fun sent ->
-  if sent then print_system "Sent key.\n" else
-    print_error "There was a problem sending your key.\n"
+let transmit_keys state ip = 
+  let resolved = if is_ip ip then Some ip else option_assoc ip state.user_ips in
+  match resolved with
+  | Some ip -> Discovery.tcp_key_transmit ip >>| fun sent ->
+    if sent then print_system "Sent key.\n" else
+      print_error "There was a problem sending your key.\n"
+  | None -> print_error "Unable to resolve username\n" |> return
 
 (* Safely adds the specified used to the keychain, prompting if needed
  * to verify the key fingerprint. *)
@@ -128,11 +141,6 @@ let send_group_message state message_body dest_spec =
       send_message state session_id username ip message_body) dest_spec |>
   Deferred.all >>| List.for_all (fun x -> x)
 
-let option_assoc key assoc =
-  try
-    Some (List.assoc key assoc)
-  with
-    Not_found -> None
 
 (* Tries to resolve a username to an online user.
  * returns: [Some user] if the username was valid and discovered,
@@ -418,7 +426,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | SendMessage _ -> return state
   | GetInfo -> print_normal ":info\n"; get_info state; return state
   | ExitSession -> print_normal ":exitsession\n"; exit_session state
-  | TransmitKeys ip -> printf_normal ":transmit %s\n" ip; transmit_keys ip >>| fun _ -> state
+  | TransmitKeys ip -> printf_normal ":transmit %s\n" ip; transmit_keys state ip >>| fun _ -> state
   | ProcessUsers -> printf_normal ":process\n"; process_users state
   | Fingerprint u -> printf_normal ":fingerprint %s\n" u; process_fingerprint state u; return state
   | FingerprintU -> printf_normal ":fingerprint\n"; own_fingerprint state; return state
