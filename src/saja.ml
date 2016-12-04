@@ -312,7 +312,9 @@ let start_session state username_list =
   | Some [] -> print_system ("Please provide a list of usernames. For example,"
                              ^" ':startsession alice bob'\n"); return state
   | Some users ->
-    if state.current_chat <> None then print_system "Left last chat." else ();
+    if state.current_chat <> None then 
+      print_system "Left last chat.\n" 
+    else ();
     let (init_body, chat, dest_spec) =
       Chat.create users |>
       Chat.send_init (Keypersist.retrieve_username state.keys) in
