@@ -1,8 +1,6 @@
 open Yojson.Basic
 open Data
 
-exception Bad_password
-
 (* [write_file file contents pass] writes JSON [contents] into [file] 
  * encrypted with [pass].*)
 val write_file: filename -> json -> string -> unit
