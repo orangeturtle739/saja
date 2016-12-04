@@ -187,7 +187,7 @@ let process_init_message state origin_user session_id body =
     read_yes_no () >>= fun join ->
     if join then (
       let my_name = Keypersist.retrieve_username state.keys in
-      let joining_message = " joined." in
+      let joining_message = "joined." in
       let (chat, dest_spec) = Chat.join session_id full_chat_users |>
                               Chat.send_msg my_name joining_message in
       send_group_message
@@ -288,7 +288,7 @@ let start_session state username_list =
       Chat.send_init (Keypersist.retrieve_username state.keys) in
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_body dest_spec >>= fun worked ->
-    if worked then 
+    if worked then
       (print_system "Sent invites.\n";
       let exit_message = " left the chat.\n" in
       handle_send_message state exit_message true >>=
