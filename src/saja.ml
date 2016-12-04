@@ -291,7 +291,10 @@ let start_session state username_list =
     if worked then 
       (print_system "Sent invites.\n";
       let exit_message = " left the chat.\n" in
-      handle_send_message state exit_message true >>=
+      (print_system "Blahblah";
+      if state.current_chat <> None then
+        handle_send_message state exit_message true
+      else return state) >>=
       (fun _ -> return new_state))
     else (print_system "Failed to start chat.\n"; return state)
   | None -> print_error "Unable to resolve usernames.\n"; return state
