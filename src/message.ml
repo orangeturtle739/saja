@@ -27,6 +27,7 @@ let pair_split delim str = Str.bounded_split (Str.regexp delim) str 2
 
 let pairify = function
   | [a; b] -> Some (a, b)
+  | [a] -> Some (a, "")
   | _ -> None
 
 let parse_init_body body =
