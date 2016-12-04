@@ -187,11 +187,10 @@ let process_init_message state origin_user session_id body =
     read_yes_no () >>= fun join ->
     if join then (
       let my_name = Keypersist.retrieve_username state.keys in
-      let joining_message = " joined." in
-      let (chat, dest_spec) = Chat.join session_id full_chat_users |>
-                              Chat.send_msg my_name joining_message in
+      let (msg, chat, dest_spec) = Chat.join session_id full_chat_users |>
+                                   Chat.send_join my_name in
       send_group_message
-        state (Message.Msg joining_message) dest_spec >>= fun worked ->
+        state msg dest_spec >>= fun worked ->
       if not worked then (print_error "Unable to join chat\n"; return (false, return state))
       else (print_system "Joined chat.\n";
             return (true, return {state with current_chat = Some chat}))
@@ -203,6 +202,11 @@ let print_user_msg username msg =
   printf_username "@%s: " username;
   printf_message "%s\n" msg
 
+(* Prints username and message nicely on behalf of the system *)
+let print_system_user_msg username msg =
+  printf_username "@%s: " username;
+  printf_system "%s\n" msg
+
 (* Processes an incoming message *)
 let process_msg_messsage state from session_id body =
   let received = state.current_chat >>>=
@@ -211,11 +215,27 @@ let process_msg_messsage state from session_id body =
   | None -> return state
   | Some chat_state ->
     print_user_msg from.user.username body;
-    return
-      {
-        state with
-        current_chat = Some chat_state;
-      }
+    return { state with current_chat = Some chat_state; }
+
+(* Processes an incoming join message_buf *)
+let process_join_messsage state from session_id =
+  let received = state.current_chat >>>=
+    Chat.receive_join from session_id in
+  match received with
+  | None -> return state
+  | Some chat_state ->
+    print_system_user_msg from.user.username "joined";
+    return { state with current_chat = Some chat_state; }
+
+(* Processes an incoming exit message_buf *)
+let process_exit_messsage state from session_id =
+  let received = state.current_chat >>>=
+    Chat.receive_exit from session_id in
+  match received with
+  | None -> return state
+  | Some chat_state ->
+    print_system_user_msg from.user.username "left the chat";
+    return { state with current_chat = Some chat_state; }
 
 (* Decrypts the message, returning [Some (username, decrypted)]
  * if the message decrypted properly. Otherwise, returns [None] *)
@@ -239,6 +259,8 @@ let process_message state origin_user message =
   match Message.body message with
   | Message.Msg body -> return (false, process_msg_messsage state origin_user session_id body)
   | Message.Init body -> process_init_message state origin_user session_id body
+  | Message.Join -> failwith "foo"
+  | Message.Exit -> failwith "Foo"
 
 (* Handles an incoming network message *)
 let handle_received_message state addr str =
@@ -264,18 +286,25 @@ let handle_received_message_ignore state addr str =
   | None -> return (false, return state)
 
 (* Tries to send a message in the current session *)
-let handle_send_message state msg exit =
+let handle_send_message state msg =
   match state.current_chat with
   | None -> print_error "Can't send message because you are not in a chat.\n";
     return state
   | Some chat_state ->
-    let (new_chat, dest_spec) =
+    let (msg_body, new_chat, dest_spec) =
       Chat.send_msg (Keypersist.retrieve_username state.keys) msg chat_state in
-    send_group_message state (Message.Msg msg) dest_spec >>= fun worked ->
-    if exit then return {state with current_chat = Some new_chat}
-    else (if not worked then print_error "Unable to send message\n"
-          else print_user_msg (Keypersist.retrieve_username state.keys) msg;
-          return {state with current_chat = Some new_chat})
+    send_group_message state msg_body dest_spec >>= fun worked ->
+    if not worked then print_error "Unable to send message\n"
+    else print_user_msg (Keypersist.retrieve_username state.keys) msg;
+    return {state with current_chat = Some new_chat}
+
+let handle_leave_chat state =
+  let exit = state.current_chat >>>|
+    Chat.send_exit (Keypersist.retrieve_username state.keys) in
+  match exit with
+  | None -> return true
+  | Some (msg_body, _, dest_spec) ->
+    send_group_message state msg_body dest_spec
 
 (* Starts a session with the specified usernames *)
 let start_session state username_list =
@@ -283,20 +312,18 @@ let start_session state username_list =
   | Some [] -> print_system ("Please provide a list of usernames. For example,"
                              ^" ':startsession alice bob'\n"); return state
   | Some users ->
+    if state.current_chat <> None then print_system "Left last chat." else ();
     let (init_body, chat, dest_spec) =
       Chat.create users |>
       Chat.send_init (Keypersist.retrieve_username state.keys) in
     let new_state = {state with current_chat = Some chat} in
     send_group_message new_state init_body dest_spec >>= fun worked ->
-    if worked then 
+    if worked then
       (print_system "Sent invites.\n";
-      let exit_message = " left the chat.\n" in
-      (print_system "Blahblah";
-      if state.current_chat <> None then
-        handle_send_message state exit_message true
-      else return state) >>=
-      (fun _ -> return new_state))
-    else (print_system "Failed to start chat.\n"; return state)
+      handle_leave_chat state >>| fun _ ->
+       new_state)
+    else (print_system "Failed to start chat.\n"; 
+          return state)
   | None -> print_error "Unable to resolve usernames.\n"; return state
 
 (* Tries to exit the current session *)
@@ -305,9 +332,7 @@ let exit_session state =
   | None -> print_error "Can't exit session because you are not in a session.\n";
     return state
   | Some _ ->
-    let exit_message =
-      " left the chat.\n" in
-    handle_send_message state exit_message true >>= fun state ->
+    handle_leave_chat state >>= fun _ ->
     print_system "Exited chat.\n";
     return {state with current_chat = None}
 
@@ -386,7 +411,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":savechat <file> -> Saves the current chat log to file.\n"
       );
     return state
-  | SendMessage msg when msg <> "" -> handle_send_message state msg false
+  | SendMessage msg when msg <> "" -> handle_send_message state msg
   | SendMessage _ -> return state
   | GetInfo -> print_normal ":info\n"; get_info state; return state
   | ExitSession -> print_normal ":exitsession\n"; exit_session state

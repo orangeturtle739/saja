@@ -2,9 +2,12 @@ open Async.Std
 open Data
 open Console
 
+(* Error message for to kill processes on port *)
+let kill_port = "Kill processes in the port to continue.\n"
+
 (* [trace p] returns the error message when port [p] is clogged. *)
-let trace port = "\n\nAccess denied to port: " ^ string_of_int(port) ^
-                 ". Kill processes in the port to continue. \n"
+let trace port = printf_error "\nAccess denied to port: %n. " port;
+  print_error kill_port
 
 (* [send_msg add p m] sends the string [m] to the IP address [add]
  * communicating on port [p] via TCP.
@@ -23,10 +26,10 @@ let listen port callback =
   let server  = fun () -> Tcp.Server.create terminal
       (fun address r _ -> Reader.contents r >>= fun contents ->
         let str_addr = Socket.Address.Inet.addr address |>
-                       Unix.Inet_addr.to_string in callback str_addr contents |> return) in
+                       Unix.Inet_addr.to_string in callback str_addr contents
+                                                   |> return) in
   server |> try_with >>| (function
       | Core.Std.Ok _    -> ()
-      | Core.Std.Error _ -> let tmsg = trace port in
-        print_error tmsg;
-        print_error "\nSaja is exiting.\n";
+      | Core.Std.Error _ -> trace port;
+        print_error "Saja is exiting.\n";
         ignore (Async.Std.exit(0)))
