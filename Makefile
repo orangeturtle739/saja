@@ -20,3 +20,7 @@ test:
 
 clean:
 	cd src; make clean
+run:
+	cd src; ./saja.sh
+debug:
+	cd src; ./saja.byte
