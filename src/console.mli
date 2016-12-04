@@ -36,6 +36,13 @@ val print_username: string -> unit
 (* [printf_username] is a printf-like function for [print_username]. *)
 val printf_username: ('a, unit, string, unit) format4 -> 'a
 
+(* [print_normal] prints a username. *)
+val print_normal: string -> unit
+
+(* [printf_normal] is a printf-like function for [print_username]. *)
+val printf_normal: ('a, unit, string, unit) format4 -> 'a
+
+
 (* [print_prompt] prints the prompt ('>>='). *)
 val print_prompt: string -> unit
 
