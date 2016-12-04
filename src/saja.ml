@@ -153,21 +153,6 @@ let resolve_user state username =
  * with any user *)
 let resolve_users state users = map_m (resolve_user state) users
 
-(* Starts a session with the specified usernames *)
-let start_session state username_list =
-  match resolve_users state username_list with
-  | Some [] -> print_system ("Please provide a list of usernames. For example,"
-                             ^" ':startsession alice bob'\n"); return state
-  | Some users ->
-    let (init_body, chat, dest_spec) =
-      Chat.create users |>
-      Chat.send_init (Keypersist.retrieve_username state.keys) in
-    let new_state = {state with current_chat = Some chat} in
-    send_group_message new_state init_body dest_spec >>= fun worked ->
-    if worked then (print_system "Sent invites.\n"; return new_state)
-    else (print_system "Failed to start chat.\n"; return state)
-  | None -> print_error "Unable to resolve usernames.\n"; return state
-
 (* Adds the pair (addr, str) to the message buf *)
 let handle_incoming_message addr str =
   Bqueue.add (addr, str) message_buf
@@ -292,10 +277,29 @@ let handle_send_message state msg exit =
           else print_user_msg (Keypersist.retrieve_username state.keys) msg;
           return {state with current_chat = Some new_chat})
 
+(* Starts a session with the specified usernames *)
+let start_session state username_list =
+  match resolve_users state username_list with
+  | Some [] -> print_system ("Please provide a list of usernames. For example,"
+                             ^" ':startsession alice bob'\n"); return state
+  | Some users ->
+    let (init_body, chat, dest_spec) =
+      Chat.create users |>
+      Chat.send_init (Keypersist.retrieve_username state.keys) in
+    let new_state = {state with current_chat = Some chat} in
+    send_group_message new_state init_body dest_spec >>= fun worked ->
+    if worked then 
+      (print_system "Sent invites.\n";
+      let exit_message = " left the chat.\n" in
+      handle_send_message state exit_message true >>=
+      (fun _ -> return new_state))
+    else (print_system "Failed to start chat.\n"; return state)
+  | None -> print_error "Unable to resolve usernames.\n"; return state
+
 (* Tries to exit the current session *)
 let exit_session state =
   match state.current_chat with
-  | None -> print_error "Can't exit session because your are not in a session.\n";
+  | None -> print_error "Can't exit session because you are not in a session.\n";
     return state
   | Some _ ->
     let exit_message =
