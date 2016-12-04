@@ -1,3 +1,5 @@
+exception Bad_password
+
 (* The type of a public RSA key *)
 type public_key = {
   n: string;

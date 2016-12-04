@@ -550,7 +550,7 @@ let rec prompt_password () =
        prompt_username >>|
        process_keys_to_init
      with
-       Persistence.Bad_password ->
+       Bad_password ->
        print_error "Incorrect password!\n";
        prompt_password ())
   | `HandlerCalled ->

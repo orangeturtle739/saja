@@ -2,8 +2,6 @@ open Yojson.Basic
 open Data
 open Crypto
 
-exception Bad_password
-
 (* [write_file file contents pass] writes JSON [contents] into [file] 
  * encrypted with [pass].*)
 let write_file (file: filename) (j: json) (password: string) =
