@@ -5,7 +5,6 @@ open Data
 let white = "\x1b[0m"
 let red = "\x1b[31m"
 let yellow = "\x1b[33m"
-let blue = "\x1b[34m"
 let cyan = "\x1b[36m"
 let green = "\x1b[32m"
 

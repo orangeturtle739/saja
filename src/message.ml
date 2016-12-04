@@ -14,8 +14,19 @@ let msg_str = function
   | Join -> join_id
   | Exit -> exit_id
 
+let strip_control_chars str = 
+  let rec to_list n = 
+    if n = String.length str then []
+    else (String.get str n)::(to_list (n+1)) in
+  let is_c_char x = (int_of_char x >= 32) in
+  let lst = to_list 0 |> List.filter is_c_char in
+  let rec join = function
+    | [] -> ""
+    | h::t -> (String.make 1 h)^(join t) in
+  join lst
+
 let body_to_string = function
-  | Msg str -> [str]
+  | Msg str -> [str |> strip_control_chars]
   | Init lst -> (List.map (fun (a, b) -> a^" "^b) lst)
   | Join | Exit -> []
 
@@ -39,7 +50,7 @@ let body_from_string str =
   pairify >>>= fun (msg_type, body) ->
   if msg_type = init_id then parse_init_body body >>>| (fun ibody ->
       Init ibody)
-  else if msg_type = msg_id then Some (Msg body)
+  else if msg_type = msg_id then Some (Msg (body |> strip_control_chars))
   else if msg_type = join_id then Some Join
   else if msg_type = exit_id then Some Exit
   else None
