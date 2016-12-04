@@ -8,6 +8,7 @@ val from_string: string -> message option
 val session_id: message -> string
 
 val body: message -> body
+val body_to_string: body -> string list
 
 val create: string -> body -> message
 val msg: string -> string -> message
