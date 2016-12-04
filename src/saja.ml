@@ -204,7 +204,7 @@ let print_user_msg username msg =
 
 (* Prints username and message nicely on behalf of the system *)
 let print_system_user_msg username msg =
-  printf_username "@%s: " username;
+  printf_username "@%s " username;
   printf_system "%s\n" msg
 
 (* Processes an incoming message *)
@@ -322,7 +322,7 @@ let start_session state username_list =
     send_group_message new_state init_body dest_spec >>= fun worked ->
     if worked then
       (print_system "Sent invites.\n";
-      handle_leave_chat state >>| fun _ ->
+       handle_leave_chat state >>| fun _ ->
        new_state)
     else (print_system "Failed to start chat.\n"; 
           return state)
