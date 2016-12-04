@@ -29,6 +29,7 @@ type action =
   | Fingerprint of username
   | FingerprintU
   | Keys
+  | SaveChat of filename
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -310,13 +311,14 @@ let get_info state =
 
 (* Prints the pawprint (fingerprint) for the (username, fingerprint) pair *)
 let pawprint (u,f) =
-  print_system "Fingerprint "; print_username (u^": "); print_normal (f^"\n")
+  print_system "Fingerprint "; print_username ("@"^u^": ");
+  print_normal (f^"\n")
 
 (* Shows the fingerprint for the specified user *)
 let process_fingerprint state user =
   if Keypersist.user_stored user state.keys then
     (user, Crypto.fingerprint (retrieve_key user state.keys)) |> pawprint
-  else (print_error "No key stored for "; print_username user; print_error "\n")
+  else (print_error "No key stored for "; print_username ("@"^user); print_error "\n")
 (* Prints the current user's fingerprint *)
 let own_fingerprint state =
   (retrieve_username state.keys,
@@ -327,13 +329,19 @@ let list_keys state =
   Keypersist.retrieve_keys state.keys |> List.split |> fst |>
   List.map (process_fingerprint state) |> ignore
 
+(* Saves a chat log to file. *)
+let save_chat file state =
+  match state.current_chat with
+  | Some chat -> Msgpersist.write_log file (Chat.msg_log chat)
+  | None -> print_error "No chat currently opened.\n"
+
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
   (match state.current_chat with
    | None -> return state
    | Some _ -> exit_session state)
   >>= fun state ->
-  print_system "Saving keystore...\n";
+  print_system "\nSaving keystore...\n";
   Keypersist.save_keystore state.keys;
   printf_prompt ">>|\n"; Async.Std.exit(0)
 
@@ -361,7 +369,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":process -> Processes any public keys that have been manually sent to you. \n"^
        ":fingerprint -> Shows your fingerprint."^
        ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
-       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
+       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"^
+       ":savechat <file> -> Saves the current chat log to file.\n"
       );
     return state
   | SendMessage msg when msg <> "" -> handle_send_message state msg
@@ -373,6 +382,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Fingerprint u -> process_fingerprint state u; return state
   | FingerprintU -> own_fingerprint state; return state
   | Keys -> list_keys state; return state
+  | SaveChat file -> save_chat file state; return state
 
 (* Parses a string into an action *)
 let action_of_string (s: string) : action =
@@ -390,6 +400,7 @@ let action_of_string (s: string) : action =
   | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
   | [":keys"] -> Keys
+  | [":savechat"; file] -> SaveChat file  
   | _ -> SendMessage s
 
 (* Main loop *)
@@ -461,7 +472,7 @@ let rec prompt_username keys =
   end
   else begin
     print_system ("Welcome back, ");
-    print_username(user);
+    print_username("@"^user);
     print_system(".\n");
     return keys
   end
