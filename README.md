@@ -113,4 +113,4 @@ To launch it, run `make run`. Alternatively, run `src/saja.sh` to launch the tmu
 
 ## Compatibility Issues
 
-Due to issues with Jane Street's UDP library, the broadcast function does not work with Mac OS X, so the `:discovery` command will not work on a Mac.
+Due to issues with the `Asyc.Std.Udp` library, the broadcast function does not work with Mac OS X, so the `:discovery` command will not work on a Mac.
