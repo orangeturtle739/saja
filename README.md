@@ -1,10 +1,10 @@
 # SAJA: Encrypted Peer-to-Peer Messaging
 _Saja_ (adj.) - "Calm, serene." [Arabic]
 ## Authors
-* **S**iddant Basnet (sb846)
-* **A**lex Libman (asl237)
-* **J**acob Glueck (jng55)
-* **A**mit Mizrahi (am2269)
+* **S**iddant Basnet ([sb846@cornell.edu](mailto:sb846@cornell.edu))
+* **A**lex Libman ([asl237@cornell.edu](mailto:asl237@cornell.edu))
+* **J**acob Glueck ([jng55@cornell.edu](mailto:jng55@cornell.edu)])
+* **A**mit Mizrahi ([am2269@cornell.edu](mailto:am2269@cornell.edu))
 
 We wrote SAJA for our final project in CS 3110, Data Structures and Functional Programming, at Cornell University during the fall 2016 semester.
 
