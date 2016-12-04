@@ -518,7 +518,7 @@ let rec prompt_username keys =
         Keypersist.write_username usr keys |> return
       else
         (print_system ("Usernames may only contain letters and numbers,"^ 
-         " and must start with a letter.\n");
+                       " and must start with a letter.\n");
          prompt_username keys)
     | `HandlerCalled ->
       print_system "\nBye!\n";
