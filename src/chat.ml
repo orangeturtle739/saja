@@ -50,3 +50,5 @@ let send_init my_name state =
   (Message.Init ip_fp_list,
    { new_state with session_id = Crypto.advance state.session_id; },
    dest_spec)
+
+let msg_log state = state.messages

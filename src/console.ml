@@ -66,5 +66,7 @@ let rec read_yes_no () : bool Deferred.t =
   else if no lower then return false
   else read_yes_no()
 
-let printf_prompt prompt = 
-  eprintf prompt
+
+let print_prompt s = 
+  eprintf "%s" (green^s^white)
+let printf_prompt format = ksprintf print_prompt format

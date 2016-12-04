@@ -159,7 +159,7 @@ let retrieve_key (user: username) (store: t) =
  * with the fingerprint in [store], or None if no such user exists. *)
 let retrieve_fingerprint_user fp (store: t) =
   let matches = Store.filter (fun usr key -> Crypto.fingerprint key = fp)
-                store.outside_keys in
+      store.outside_keys in
   try
     Some (Store.choose matches |> fst)
   with

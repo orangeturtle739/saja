@@ -29,6 +29,7 @@ type action =
   | Fingerprint of username
   | FingerprintU
   | Keys
+  | SaveChat of filename
 
 (* [program state] is a representation type containing the relevant
    details of the program's state. *)
@@ -206,11 +207,11 @@ let process_init_message state origin_user session_id body =
                               Chat.send_msg my_name joining_message in
       send_group_message
         state (Message.Msg joining_message) dest_spec >>= fun worked ->
-      if not worked then (print_error "Unable to join chat\n"; return state)
+      if not worked then (print_error "Unable to join chat\n"; return (false, return state))
       else (print_system "Joined chat.\n";
-            return {state with current_chat = Some chat})
-    ) else return state
-  | None -> return state
+            return (true, return {state with current_chat = Some chat}))
+    ) else return (true, return state)
+  | None -> return (false, return state)
 
 (* Processes an incoming message *)
 let process_msg_messsage state from session_id body =
@@ -219,7 +220,7 @@ let process_msg_messsage state from session_id body =
   match received with
   | None -> return state
   | Some chat_state ->
-    printf_username "\n@%s: " from.user.username;
+    printf_username "@%s: " from.user.username;
     printf_message "%s\n" body;
     return
       {
@@ -247,7 +248,7 @@ let decrypt_message state str =
 let process_message state origin_user message =
   let session_id = (Message.session_id message) in
   match Message.body message with
-  | Message.Msg body -> process_msg_messsage state origin_user session_id body
+  | Message.Msg body -> return (false, process_msg_messsage state origin_user session_id body)
   | Message.Init body -> process_init_message state origin_user session_id body
 
 (* Handles an incoming network message *)
@@ -264,14 +265,14 @@ let handle_received_message state addr str =
     } in
   match Message.from_string decrypted_message with
   | Some message -> process_message state origin_user message
-  | None -> return state
+  | None -> return (false, return state)
 
 (* Handles a message, returning the current state if the message failed
  * to process, or the new state if the message processed succesfully. *)
 let handle_received_message_ignore state addr str =
   match handle_received_message state addr str with
   | Some thing -> thing
-  | None -> return state
+  | None -> return (false, return state)
 
 (* Tries to send a message in the current session *)
 let handle_send_message state msg exit =
@@ -329,6 +330,12 @@ let list_keys state =
   Keypersist.retrieve_keys state.keys |> List.split |> fst |>
   List.map (process_fingerprint state) |> ignore
 
+(* Saves a chat log to file. *)
+let save_chat file state =
+  match state.current_chat with
+  | Some chat -> Msgpersist.write_log file (Chat.msg_log chat)
+  | None -> print_error "No chat currently opened.\n"
+
 (* Safely exits the program by leaving the current chat and saving the keystore *)
 let safe_exit state =
   (match state.current_chat with
@@ -363,7 +370,8 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":process -> Processes any public keys that have been manually sent to you. \n"^
        ":fingerprint -> Shows your fingerprint."^
        ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
-       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"
+       "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"^
+       ":savechat <file> -> Saves the current chat log to file.\n"
       );
     return state
   | SendMessage msg when msg <> "" -> handle_send_message state msg false
@@ -375,6 +383,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
   | Fingerprint u -> process_fingerprint state u; return state
   | FingerprintU -> own_fingerprint state; return state
   | Keys -> list_keys state; return state
+  | SaveChat file -> save_chat file state; return state
 
 (* Parses a string into an action *)
 let action_of_string (s: string) : action =
@@ -392,11 +401,12 @@ let action_of_string (s: string) : action =
   | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
   | [":keys"] -> Keys
+  | [":savechat"; file] -> SaveChat file  
   | _ -> SendMessage s
 
 (* Main loop *)
-let rec main program_state =
-  printf_prompt ">>= ";
+let rec main need_prompt program_state =
+  if need_prompt then printf_prompt ">>= " else ();
   choose
     [
       choice (Bqueue.recent_take message_buf) (fun (addr, str) ->
@@ -408,9 +418,10 @@ let rec main program_state =
     ] >>= fun pick ->
   (match pick with
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
-   | `ReadConsole s -> execute (action_of_string s) program_state
-   | `HandlerCalled -> safe_exit program_state)
-  >>= main
+   | `ReadConsole s -> return (true, execute (action_of_string s) program_state)
+   | `HandlerCalled -> return (false, safe_exit program_state))
+  >>= fun (need_prompt, program_state) -> program_state >>= 
+  main need_prompt
 
 (* Processes the keychain into the initial user state *)
 let process_keys_to_init keys =
@@ -515,7 +526,7 @@ let _ =
      (fun online_user -> found := online_user::(!found)));
   let _ = listen chat_port handle_incoming_message in
   let _ = Discovery.start_listening () in
-  let _ = prompt_password() >>| main in
+  let _ = prompt_password() >>| fun state -> main true state in
   let _ = Signal.handle [Signal.of_string "sigint"]
       ~f:(fun _ -> Bqueue.add () handler_buf) in
   Scheduler.go()
