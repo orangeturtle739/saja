@@ -40,7 +40,7 @@ SAJA is a peer-to-peer encrypted messaging system designed for communication bet
 \end{itemize}
 
 \subsection{Description}
-A sample user starts the program and has the option to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. The user can choose to message any number of these users, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
+A sample user starts the program and has the ability to send out a UDP broadcast to discover other online users on the same network. This lists the IP addresses, user names, and public keys of these connected users. The user can choose to message any number of these users, creating a group messaging session. The other users in this newly formed group receive a notification, inviting them to join the conversation. Once they do so, they will be able to send messages to everyone else who has agreed to join the group. If a user logs off and then logs back into a session, the client will request all of its peers for a history of what has happened during the logged-off period.
 
 All messages sent using this system are encrypted and signed using a hybrid cryptosystem of RSA and AES. Every user maintains a keychain mapping usernames to public RSA keys. Every time a user starts a chat, the program verifies that the public key and username pair advertised with the chat matches that stored in the user's local keychain (this is a very simplified version of the PGP trust model). Group messages are represented as a grouping of pairwise messaging connections. Upon receiving a message, all clients verify the signature.
 
@@ -93,7 +93,7 @@ A more extensive example can be found  \href{https://asciinema.org/a/e9isbc0pb8w
 	\item \textbf{Broadcast}: sends UDP broadcast to find other users on network
 	\item \textbf{Message Transport}: sends encrypted messages over the network via TCP
 	\item \textbf{Keychain Persistence}: stores mapping of usernames to public keys in memory and formats for writing to a file
-	\item \textbf{Message Persistence}: lets user write chat log to file before exiting
+	\item \textbf{Message Persistence}: lets user write chat log to file
 	\item \textbf{Persistence}: a general wrapper for writing data structures to files
 	\item \textbf{Crypto}: handles encryption, decryption, and verification
 	\item \textbf{Controller}: takes textual input from user and carries out actions based on command
