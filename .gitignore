@@ -5,3 +5,4 @@ charter/charter.pdf
 design/design.pdf
 *.log
 *.swp
+*.out

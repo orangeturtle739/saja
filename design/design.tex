@@ -139,13 +139,23 @@ The initiator will then send a message to each of the other members of the group
 Upon receiving an invitation to a chat, the user will verify that all the usernames and fingerprints received in the invitation match those stored in the key store. If not, it will ask the user for verification. If the user verifies them, it will store them in the local key store.
 
 \subsection{Message Transport}
-Message transport will be done pairwise, with each client sending a message individually to each other member of the group. When a client responds to the message, the session ID of the response will be equal to a hash of the session ID of the message being responded to. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious. Furthermore, the session ID provides a sequencing mechanism for the messages. This is important for security, as discussed in Clarkson's CS 5430 course.
+Message transport will be done pairwise, with each client sending a message individually to each other member of the group. Each chat has a session ID associated with it. The session id is set at initialization, and upon receiving the initialization message, each client hashs the sesssion ID to use as the session ID for the chat. When a client responds to the message, they will include this hashed session ID. This prevents the client from signing an arbitrary session ID. Without this hashing procedure, Eve could send a malicious initialization message to Alice containing a session ID containing something Alice would not want to sign, but she would sign anyways and send back. By hashing the session ID, it becomes computationally infeasible for Eve to generate a session ID such that when hashed would be malicious.
 
 \subsection{Encryption}
-We used a hybrid-encryption scheme using 4096-bit RSA and AES. RSA will be used to encrypt a session key for each message, and the body of the message will be encrypted using AES with that session key. The AES will use cipher block chaining.\\
+We used a hybrid-encryption scheme using 4096-bit RSA and 256-bit AES. RSA will be used to encrypt a session key for each message, and the body of the message will be encrypted using AES with that session key. The AES will use cipher block chaining.\\
+
+\subsection{Key Verification}
+In order for the cryptosystem to be secure, each client must verify the keys of each user they communicate with over some secure channel, preferably in person. The program provides a \texttt{:fingerprint} command which prints out the public key fingerprint of the current user. The fingerprint is generated using a SHA-512 hash of the public encryption and signing keys. A user can transmit their key to any other user by broadcasting it over UDP using \texttt{:discover} or directly with \texttt{:transmit <username | IP>}. Upon receiving a key, a user can add it to their keychain with \texttt{:process} (\texttt{:discover} will automatically invoke \texttt{:process} on any keys it receives; \texttt{:process} is only necessary when \texttt{:transmit} is used). If there is no entry for the username in the keychain, the program will prompt the user to verify the fingerprint. If the key is already in the keychain and matches the one received, then the program will inform the user that it discovered a peer. If the user discovered is already stored in the keychain, but the key stored in the keychain does not match the key received, the program prints out a warning advising the user to reject the key because they user is probably the target of a man in the middle attack.
 
 \subsection{Integrity}
-Each encrypted message will be signed using a separate RSA key.
+Each encrypted message is hashed with SHA-512 and then signed using a separate signing RSA key.
+
+\subsection{Attack Analysis}
+To asses the security of the system, we condsidered the following attacks:
+\begin{enumerate}
+\item Consider a man in the middle attack. Alice and Bob are trying to send messages to each other, but Eve pretends to be Bob, sending Bob's public keys to Alice from her own IP address. However, because Alice has verified Bob's key fingerprint in person, no matter where Alice sends her encrypted messages, a MITM attack will not allow Eve to decrypt the message because Alice won't encrypt the message with any key not equal to the verified key she has stored in her keychain.
+\item Consider a signing or encryption oracle attack. However, since each message only consists of the message the user wrote and a session ID, an attacker cannot force a client to encrypt and sign arbitrary data. With respect to the session ID, since each client hashes it on receiving it and uses the hashed version for all future communication, it is infeasible for an attack to engineer a session ID such that when hashed is something usefull.
+\end{enumerate}
 
 \section{Division of Labor}
 
