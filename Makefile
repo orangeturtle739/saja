@@ -20,9 +20,9 @@ test:
 
 clean:
 	cd src; make clean
-run:
+run: default
 	cd src; ./saja.sh
-debug:
+debug: default
 	cd src; ./saja.byte
 submit: clean default design
 	rm -rf submission
