@@ -6,6 +6,8 @@ _Saja_ (adj.) - "Calm, serene." [Arabic]
 * **J**acob Glueck (jng55)
 * **A**mit Mizrahi (am2269)
 
+We wrote SAJA for our final project in CS 3110, Data Structures and Functional Programming, at Cornell University during the fall 2016 semester.
+
 ## Vision
 SAJA is a peer-to-peer encrypted messaging system designed for communication between people on the same network.
 
