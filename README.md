@@ -4,7 +4,7 @@ _Saja_ (adj.) - "Calm, serene." [Arabic]
 * **S**iddant Basnet (sb846)
 * **A**lex Libman (asl237)
 * **J**acob Glueck (jng55)
-* **A**mit Mizrahi (am2269)}
+* **A**mit Mizrahi (am2269)
 
 ## Vision
 SAJA is a peer-to-peer encrypted messaging system designed for communication between people on the same network.
