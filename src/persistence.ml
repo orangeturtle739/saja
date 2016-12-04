@@ -2,7 +2,6 @@ open Yojson.Basic
 open Data
 open Crypto
 
-type filename = string
 exception Bad_password
 
 (* [write_file file contents pass] writes JSON [contents] into [file] 

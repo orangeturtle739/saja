@@ -368,7 +368,7 @@ let execute (command: action) (state: program_state) : program_state Deferred.t 
        ":exitsession -> Exits the messaging session (but not the program). \n"^
        ":transmit <ip-addr> -> Manually transmits your public key to an IP address. \n"^
        ":process -> Processes any public keys that have been manually sent to you. \n"^
-       ":fingerprint -> Shows your fingerprint."^
+       ":fingerprint -> Shows your fingerprint.\n"^
        ":fingerprint <username> -> Shows the fingerprint of the user with the given username."^
        "If no command is specified, SAJA assumes you are trying to send a message and will attempt to send it.\n"^
        ":savechat <file> -> Saves the current chat log to file.\n"
