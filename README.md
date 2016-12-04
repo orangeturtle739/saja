@@ -1,4 +1,4 @@
-# SAJA: Encrypted Peer-to-Peer Messaging}
+# SAJA: Encrypted Peer-to-Peer Messaging
 _Saja_ (adj.) - "Calm, serene." [Arabic]
 ## Authors
 * **S**iddant Basnet (sb846)
