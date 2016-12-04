@@ -3,7 +3,7 @@ open Async.Std
 
 (* [send_broadcast ()] sends a
  * broadcast out to the network.
- * returns: true if the broadcast was successfull, false otherwise *)
+ * returns: true if the broadcast was successful, false otherwise *)
 val send_broadcast: unit -> bool Deferred.t
 
 (* [bind_discovery func] takes a function from ip_address to unit to be called
