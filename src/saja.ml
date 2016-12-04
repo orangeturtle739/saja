@@ -485,6 +485,10 @@ let process_keys_to_init keys =
     current_chat = None;
   }
 
+(* Checks whether a username is of the proper form (numbers and letters only) *)
+let valid_username usr =
+  Str.string_match (Str.regexp "^[a-zA-Z][a-zA-Z1-9]*$") usr 0
+
 (* Prompts the user for a username *)
 let rec prompt_username keys =
   let user = Keypersist.retrieve_username keys in
@@ -500,7 +504,7 @@ let rec prompt_username keys =
       ] >>= fun pick ->
     match pick with
     | `ReadUser usr ->
-      if not (String.contains usr ' ' || usr = "") then
+      if valid_username usr then
         let okay_message = "Alrighty! We'll call you " ^ usr ^ ".\n" in
         printf_system "%s" okay_message;
         Keypersist.write_username usr keys |> return
