@@ -509,7 +509,8 @@ let rec prompt_username keys =
         printf_system "%s" okay_message;
         Keypersist.write_username usr keys |> return
       else
-        (print_system "Usernames can not contain spaces, or be blank.\n";
+        (print_system ("Usernames may only contain letters and numbers,"^ 
+         " and must start with a letter.\n");
          prompt_username keys)
     | `HandlerCalled ->
       print_system "\nBye!\n";
