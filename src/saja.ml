@@ -401,7 +401,7 @@ let action_of_string (s: string) : action =
   | [":fingerprint"] -> FingerprintU
   | ":fingerprint"::[u] -> Fingerprint u
   | [":keys"] -> Keys
-  | [":savechat"; file] -> SaveChat file  
+  | [":savechat"; file] -> SaveChat file
   | _ -> SendMessage s
 
 (* Main loop *)
@@ -420,7 +420,7 @@ let rec main need_prompt program_state =
    | `ReadMsg (addr, str) -> handle_received_message_ignore program_state addr str
    | `ReadConsole s -> return (true, execute (action_of_string s) program_state)
    | `HandlerCalled -> return (false, safe_exit program_state))
-  >>= fun (need_prompt, program_state) -> program_state >>= 
+  >>= fun (need_prompt, program_state) -> program_state >>=
   main need_prompt
 
 (* Processes the keychain into the initial user state *)
