@@ -296,7 +296,7 @@ let handle_send_message state msg =
     send_group_message state msg_body dest_spec >>= fun worked ->
     if not worked then print_error "Unable to send message\n"
     else print_user_msg (Keypersist.retrieve_username state.keys)
-      (Message.body_to_string msg_body |> String.concat "\n");
+        (Message.body_to_string msg_body |> String.concat "\n");
     return {state with current_chat = Some new_chat}
 
 let handle_leave_chat state =
